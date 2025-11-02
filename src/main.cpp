@@ -1,29 +1,22 @@
 // ****************************************************************************************************************************************
-// Title            : main.cpp
-// Description      : The script is responsible for navigating the robot to the setpoint after subscribing to it. It configures the
-//                    raspberry pi and sends PWM signals to motor drivers to drive the motors.                
-// Author           : Sowbhagya Lakshmi H T
-// Last revised on  : 20/05/2023
+// Title            : main.cpp (SIM BUILD VERSION - no GPIO)
+// Description      : Sim version for Ubuntu VM. Navigates to setpoint logically but does NOT touch Raspberry Pi pins.
 // ****************************************************************************************************************************************
 
 #include <cmath>
 #include <ctime>
-#include <csignal>
 #include <cstdlib>
 #include <iostream>
-#include <math.h>
 #include <string>
+#include <unistd.h>            // for sleep/usleep if needed
 
-#include "geometry_msgs/PointStamped.h"
-#include "geometry_msgs/Vector3.h"
 #include "ros/ros.h"
-#include "sensor_msgs/Imu.h"
-#include "softPwm.h"
 #include "std_msgs/Bool.h"
-#include "std_msgs/String.h"
 #include "std_msgs/Int8.h"
-#include "wiringPi.h"
 
+// ---------------------- motorControl ----------------------
+// In the real robot, this would configure GPIO pins, PWM, etc.
+// In the VM build, we just store the pin numbers so code compiles.
 class motorControl
 {
 public:
@@ -33,24 +26,19 @@ public:
 
     motorControl(int dirPin, int pwmPin)
     {
-        // To control each motor, 2 signals are required
-        // Dir signal = 0 or 1
-        // PWM signal = 0 to 100
-
         m_dirPin = dirPin;
         m_pwmPin = pwmPin;
+        m_speed  = 0;
 
-        // Set pin mode
-        pinMode(m_dirPin, OUTPUT);
-        pinMode(m_pwmPin, OUTPUT);
-
-        // Create soft pwm
-        int pwmInitialVal = 0;
-        int pwmRange = 100;
-        softPwmCreate(m_pwmPin, pwmInitialVal, pwmRange);
+        // REAL ROBOT VERSION (commented out for VM):
+        // pinMode(m_dirPin, OUTPUT);
+        // pinMode(m_pwmPin, OUTPUT);
+        // softPwmCreate(m_pwmPin, 0, 100);
     }
 };
 
+// ---------------------- SetPoint ----------------------
+// Listens for "setpoint" Int8 messages and publishes "isReachedSetPoint" Bool.
 class SetPoint
 {
 public:
@@ -61,7 +49,7 @@ public:
     SetPoint(ros::NodeHandle* n)
     {
         int queue_size = 1000;
-        m_reachedSetpointPub = n->advertise<std_msgs::Bool>("isReachedSetPoint",queue_size);
+        m_reachedSetpointPub = n->advertise<std_msgs::Bool>("isReachedSetPoint", queue_size);
         m_setpointSub = n->subscribe("setpoint", 1, &SetPoint::setpoint_callback, this);
     }
 
@@ -78,6 +66,8 @@ public:
     }
 };
 
+// ---------------------- Navigation ----------------------
+// Handles velocities and "movement logic". In VM we just print instead of driving motors.
 class Navigation
 {
 public:
@@ -90,107 +80,104 @@ public:
     motorControl* m_bwRight;
     motorControl* m_bwLeft;
 
-    Navigation(ros::NodeHandle* n, motorControl* fwRight, motorControl* fwLeft, motorControl* bwRight, motorControl* bwLeft)
+    Navigation(ros::NodeHandle* /*n*/, motorControl* fwRight, motorControl* fwLeft, motorControl* bwRight, motorControl* bwLeft)
     {
         m_fwRight = fwRight;
-        m_fwLeft = fwLeft;
+        m_fwLeft  = fwLeft;
         m_bwRight = bwRight;
-        m_bwLeft = bwLeft;
+        m_bwLeft  = bwLeft;
     }
 
     void navigate_to_point(SetPoint* setpoint)
     {
+        // NOTE: this is super simple logic from the original code:
+        // setpoint 0 = move forward
+        // setpoint 1 = move backward
         if (setpoint->m_setpoint == 0)  // Location A
         {
             m_rightVelocity = 15;
-            m_leftVelocity = 15;
-
-            set_velocity();
+            m_leftVelocity  = 15;
         }
         else if (setpoint->m_setpoint == 1)     // Location B
         {
             m_rightVelocity = -15;
-            m_leftVelocity = -15;
-
-            set_velocity();
+            m_leftVelocity  = -15;
         }
+
+        set_velocity();
     }
 
+    // This function was broken before because half of it was commented out.
+    // Here we turn it into a safe stub that just logs.
     void set_velocity()
     {
+        ROS_INFO("set_velocity -> R:%d  L:%d", m_rightVelocity, m_leftVelocity);
 
-        for(int index=0; index<4; index++)
-        {   
-            if (m_rightVelocity >=0)
-            {
-                digitalWrite(m_fwRight->m_dirPin, HIGH);
-                digitalWrite(m_fwLeft->m_dirPin, HIGH);
-                digitalWrite(m_bwRight->m_dirPin, HIGH);
-                digitalWrite(m_bwLeft->m_dirPin, HIGH);
+        // REAL ROBOT VERSION (commented out):
+        // if (m_rightVelocity >= 0) {
+        //     digitalWrite(m_fwRight->m_dirPin, HIGH);
+        //     digitalWrite(m_fwLeft->m_dirPin, HIGH);
+        //     digitalWrite(m_bwRight->m_dirPin, HIGH);
+        //     digitalWrite(m_bwLeft->m_dirPin, HIGH);
+        // } else {
+        //     digitalWrite(m_fwRight->m_dirPin, LOW);
+        //     digitalWrite(m_fwLeft->m_dirPin, LOW);
+        //     digitalWrite(m_bwRight->m_dirPin, LOW);
+        //     digitalWrite(m_bwLeft->m_dirPin, LOW);
+        // }
 
-            }
-            else if (m_rightVelocity <0)
-            {
-                digitalWrite(m_fwLeft->m_dirPin, LOW);
-                digitalWrite(m_fwRight->m_dirPin, LOW);
-                digitalWrite(m_bwRight->m_dirPin, LOW);
-                digitalWrite(m_bwLeft->m_dirPin, LOW);
-            }
-            
-            softPwmWrite(m_fwRight->m_pwmPin, abs(m_rightVelocity));
-            softPwmWrite(m_fwLeft->m_pwmPin, abs(m_rightVelocity));
-            softPwmWrite(m_bwRight->m_pwmPin, abs(m_rightVelocity));
-            softPwmWrite(m_bwLeft->m_pwmPin, abs(m_rightVelocity));
-        }
+        // softPwmWrite(m_fwRight->m_pwmPin, abs(m_rightVelocity));
+        // softPwmWrite(m_fwLeft->m_pwmPin,  abs(m_rightVelocity));
+        // softPwmWrite(m_bwRight->m_pwmPin, abs(m_rightVelocity));
+        // softPwmWrite(m_bwLeft->m_pwmPin,  abs(m_rightVelocity));
     }
 
     void stopMotors()
     {
-        m_rightVelocity = abs(m_rightVelocity);
+        // VM version: just zero them out and log
+        m_rightVelocity = 0;
+        m_leftVelocity  = 0;
 
-        // Decreasing the motor velocity gradually
-        while(m_rightVelocity >= 0)
-        {
+        ROS_INFO("stopMotors -> R:%d  L:%d", m_rightVelocity, m_leftVelocity);
 
-            softPwmWrite(m_fwRight->m_pwmPin, m_rightVelocity);
-            softPwmWrite(m_fwLeft->m_pwmPin, m_rightVelocity);
-            softPwmWrite(m_bwRight->m_pwmPin, m_rightVelocity);
-            softPwmWrite(m_bwLeft->m_pwmPin, m_rightVelocity);
+        // REAL ROBOT VERSION (commented out):
+        // while(m_rightVelocity >= 0)
+        // {
+        //     softPwmWrite(m_fwRight->m_pwmPin, m_rightVelocity);
+        //     softPwmWrite(m_fwLeft->m_pwmPin,  m_rightVelocity);
+        //     softPwmWrite(m_bwRight->m_pwmPin, m_rightVelocity);
+        //     softPwmWrite(m_bwLeft->m_pwmPin,  m_rightVelocity);
+        //     m_rightVelocity--;
+        // }
+        //
+        // digitalWrite(m_fwRight->m_pwmPin, LOW);
+        // digitalWrite(m_fwLeft->m_pwmPin, LOW);
+        // digitalWrite(m_bwRight->m_pwmPin, LOW);
+        // digitalWrite(m_bwLeft->m_pwmPin, LOW);
+        //
+        // delay(3);
+    }
 
-            m_rightVelocity--;
-        }
-
-        digitalWrite(m_fwRight->m_pwmPin, LOW);
-        digitalWrite(m_fwLeft->m_pwmPin, LOW);
-        digitalWrite(m_bwRight->m_pwmPin, LOW);
-        digitalWrite(m_bwLeft->m_pwmPin, LOW);
-
-        delay(3);
-    }    
-
+    // Utility math function is unchanged
     double find_distance_between_points(double point1[3], double point2[3])
     {
-        // Finding the distance between 2 points on a 2D plane using 
-        // the formula d = √((x_2-x_1)² + (y_2-y_1)²). 
-        // Here since the robot's x and z axes are parallel to the
-        // ground we use those coordinates to calculate the distance.
-        return sqrt((pow((point1[0]-point2[0]), 2)+pow((point1[2]-point2[2]), 2)));
+        return std::sqrt(
+            std::pow((point1[0]-point2[0]), 2) +
+            std::pow((point1[2]-point2[2]), 2)
+        );
     }
 };
 
+// ---------------------- main() ----------------------
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "main");
     ros::NodeHandle n;
 
-    if(wiringPiSetup()<0)
-    {
-        std::cout<<"setup wiring pi failed"<<'\n';
-        return 1;
-    }
+    // REAL ROBOT VERSION (commented out):
+    // if(wiringPiSetup()<0) { std::cout<<"setup wiring pi failed\n"; return 1; }
 
-    // Defining the 4 motors using the pin numbers the respective
-    // dir and PWM pins are connected to
+    // Create motor objects. On Pi, these would map to actual GPIO pins.
     motorControl fwRight{5, 4};
     motorControl fwLeft{3, 2};
     motorControl bwRight{29, 28};
@@ -201,15 +188,14 @@ int main(int argc, char **argv)
 
     ros::Rate loop_rate(10);
 
-    time_t loopStartTime;
-    time_t loopCurrTime;
-    time_t timeDiff{0};
-
     while (ros::ok())
     {
-        if (setpoint.m_setpoint != -1)     //if the setpoint has been set, then true
+        if (setpoint.m_setpoint != -1)  // setpoint received
         {
             navigation.navigate_to_point(&setpoint);
+            ROS_INFO("Navigating toward setpoint %d", setpoint.m_setpoint);
+
+            // OPTIONAL FUTURE: setpoint.reachedSetpointStatus(1) when reached.
         }
         else
         {
@@ -220,5 +206,6 @@ int main(int argc, char **argv)
         ros::spinOnce();
         loop_rate.sleep();
     }   
+
     return 0;
 }

@@ -4,21 +4,24 @@
 //                    publishes it. It also publishes appropriate status signals.           
 // Author           : Sowbhagya Lakshmi H T
 // Last revised on  : 20/05/2023
+// NOTE (SIM BUILD VERSION - no GPIO): wiringPi removed for Ubuntu VM
 // ****************************************************************************************************************************************
 
 #include <array>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <ctime>
+#include <csignal>
+
 #include "ros/ros.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/Int8.h"
 #include "std_msgs/String.h"
 #include <geometry_msgs/Vector3.h>
-#include <wiringPi.h>
-#include <ctime>
-#include <csignal>
-#include <softPwm.h>
+
+// #include <wiringPi.h>   // REMOVED FOR VM
+// #include <softPwm.h>    // REMOVED FOR VM
 
 // For sleep function
 #ifdef _WIN32
@@ -192,11 +195,11 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-
         time_t timeDiff{0};
 
         int senderCount{0};
-        // Sender loop
+
+        // ---------------- SENDER LOOP ----------------
         while (ros::ok())
         {
             bool isfoundSetpoint{setpoint.find_setpoint(sender.m_location)};            
@@ -212,12 +215,13 @@ int main(int argc, char **argv)
                 time(&loopCurrTime);
                 timeDiff = loopCurrTime - loopStartTime;
                 
-		ROS_INFO("Found setpoint"); 
+                ROS_INFO("Found setpoint"); 
                 botAvailability.set_availability_status(AvailabilityStatusOptions::no);
                 progressStatus.set_progress_status(ProgressStatusOptions::in_progress);
             }
 
-            sleep(2);   // Small wait in code to compensate for delay in data transmission
+            // Small wait to allow topics to update
+            sleep(2);
             ros::spinOnce();
             loopRate.sleep();
 
@@ -228,15 +232,15 @@ int main(int argc, char **argv)
             }
         }
 
-        // std::cout << "Receiver loop\n";
+        // ---------------- RECEIVER LOOP ----------------
         time(&loopStartTime);
 
-        // Receiver loop
         while (ros::ok())
         {
-            int receiverCount{0};
+            int receiverCount{0}; // (currently unused, but keeping for parity with original code)
 
             bool isfoundSetpoint{setpoint.find_setpoint(receiver.m_location)};
+            (void)isfoundSetpoint; // avoid unused warning
 
             sleep(1);
             ros::spinOnce();
@@ -259,6 +263,7 @@ int main(int argc, char **argv)
                 break;
             }
         }
+
         std::cout << '\n';
         sleep(4);
         ros::spinOnce();

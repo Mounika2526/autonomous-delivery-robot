@@ -1,20 +1,14 @@
 <launch>
-        <node
-                pkg="autonomous_delivery_robot"
-                type="main"
-                name="main"
-                output="screen"
-        />
-       <node
-                pkg="autonomous_delivery_robot"
-                type="delivery"
-                name="delivery"
-                output="screen"
-        />
-        <node
-                pkg="autonomous_delivery_robot"
-                type="access_database.py"
-                name="access_database"
-                output="screen"
-        />
+    <!-- publishes senderLocation and receiverLocation topics -->
+    <node pkg="autonomous-delivery-robot"
+          type="fake_publishers.py"
+          name="fake_publishers"
+          output="screen" />
+
+    <!-- core delivery logic node -->
+    <node pkg="autonomous-delivery-robot"
+          type="delivery_adr"
+          name="delivery_node"
+          output="screen" />
 </launch>
+
