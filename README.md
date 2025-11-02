@@ -1,5 +1,38 @@
-# AUTONOMOUS DELIVERY ROBOT
+# Autonomous Delivery Robot – Simulation Adaptation (Academic Project)
 
+This repository is a **fork and enhancement** of the original  
+[MIT-Mentors/autonomous-delivery-robot](https://github.com/MIT-Mentors/autonomous-delivery-robot) project.
+
+It was extended for my **academic coursework at the University of Maryland, Baltimore County (UMBC)** to simulate and visualize the autonomous delivery robot entirely in a **virtual Ubuntu 20.04 / ROS Noetic** environment without Raspberry Pi hardware.
+
+---
+
+## 🎯 Project Purpose
+This fork enables **software-only testing and visualization** of the robot’s navigation and delivery system using ROS topics, URDF, and RViz.  
+It allows the robot’s local and global navigation logic to be executed and verified in simulation before deployment on physical hardware.
+
+---
+
+## 🧩 Key Additions and Modifications
+| Component | Description |
+|------------|-------------|
+| `launch/visualize_robot.launch` | Launch file for RViz-based visualization |
+| `launch/rviz_config.rviz` | Custom configuration for robot visualization |
+| `urdf/delivery_bot.urdf` | URDF model of the delivery robot |
+| `scripts/fake_publishers.py` | Simulates sensor and status topics for testing |
+| `scripts/pose_broadcaster.py` | Publishes simulated pose data to ROS topics |
+| `launch/delivery.launch` | Updated for simulation workflow |
+| General | Updated C++ and Python nodes to run without hardware (GPIO-free build) |
+
+---
+
+## 🧠 Learning Goals
+- Understand ROS Noetic package structure and node communication  
+- Simulate a multi-module robotic system using publishers, subscribers, and URDF  
+- Visualize robot pose, delivery progress, and sensor data in RViz  
+- Develop a testable version of an autonomous delivery system using open-source tools  
+
+# AUTONOMOUS DELIVERY ROBOT
 ## Summary of the project 
 This project is aimed at building an autonomous robot to be used for delivering things for a closed environment like an office, a college campus, etc consisting of multiple buildings. The robot is inspired by food and package delivery robots developed by FedEx, Amazon, Starship, etc. prominently used in the US. 
 
