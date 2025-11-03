@@ -4,11 +4,25 @@ import tf2_ros
 import geometry_msgs.msg
 import visualization_msgs.msg
 import math
-import time
+import threading  # NEW
 
+# -------------------------------------------------
 # Helper: distance between two points
+# -------------------------------------------------
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+
+# -------------------------------------------------
+# Shared goal state (updated by delivery.cpp)
+# -------------------------------------------------
+goal_lock = threading.Lock()
+goal_xy = [3.0, 2.0]  # default goal until /delivery_goal gives us one
+
+def goal_callback(msg):
+    """Update goal_xy whenever /delivery_goal publishes a new Point."""
+    with goal_lock:
+        goal_xy[0] = msg.x
+        goal_xy[1] = msg.y
 
 if __name__ == "__main__":
     rospy.init_node("nav_sim")
@@ -20,70 +34,64 @@ if __name__ == "__main__":
     obs_marker_pub   = rospy.Publisher("obstacle_markers", visualization_msgs.msg.Marker, queue_size=10)
     trail_marker_pub = rospy.Publisher("trail_marker", visualization_msgs.msg.Marker, queue_size=10)
 
-    rate = rospy.Rate(15)  # 15 Hz update looks smooth
+    # NEW: listen for live delivery goals from delivery.cpp
+    goal_sub = rospy.Subscriber("delivery_goal",
+                                geometry_msgs.msg.Point,
+                                goal_callback)
+
+    rate = rospy.Rate(15)  # 15 Hz looks smooth
 
     # -------------------------
     # World setup
     # -------------------------
-    # Robot start
+    # Robot start pose
     x = 0.0
     y = 0.0
     theta = 0.0  # heading (radians)
 
-    # Delivery goal (delivery point)
-    goal = (3.0, 2.0)
-
     # Obstacles: list of (x,y,radius)
     obstacles = [
-        (1.2, 0.5, 0.4),   # obstacle 1
-        (2.0, 1.5, 0.4),   # obstacle 2
-        (2.5, 0.5, 0.4),   # obstacle 3
+        (1.2, 0.5, 0.4),
+        (2.0, 1.5, 0.4),
+        (2.5, 0.5, 0.4),
     ]
 
-    # We'll also keep a breadcrumb trail of positions the robot has visited
+    # Breadcrumb trail of visited positions
     trail_points = []
 
     # Movement tuning
-    base_speed = 0.03       # forward step size per tick
+    base_speed     = 0.03   # forward step size per tick
     avoid_strength = 0.6    # how hard we steer away from obstacles
-    avoid_range = 0.8       # start avoiding when within this distance
+    avoid_range    = 0.8    # start avoiding when within this distance
 
     while not rospy.is_shutdown():
+        # -------------------------------------------------
+        # 0. Read the current goal safely
+        # -------------------------------------------------
+        with goal_lock:
+            gx = goal_xy[0]
+            gy = goal_xy[1]
 
-        # -------------------------------------------------
-        # 0. Check if we've basically reached the goal
-        # -------------------------------------------------
-        to_goal_x_full = goal[0] - x
-        to_goal_y_full = goal[1] - y
+        # Distance to goal
+        to_goal_x_full = gx - x
+        to_goal_y_full = gy - y
         goal_dist_full = math.sqrt(to_goal_x_full**2 + to_goal_y_full**2)
 
-        # If robot is very close to the goal, simulate "delivery done"
-        # then reset robot back to start and clear the trail
+        # -------------------------------------------------
+        # 0.5. Arrived at goal? -> reset robot to start
+        # -------------------------------------------------
         if goal_dist_full < 0.15:
-            # reset pose to start location
             x = 0.0
             y = 0.0
             theta = 0.0
-
-            # (optional) if you want multiple stops, you could
-            # flip between two goals here instead of keeping the same one.
-            # Example:
-            # if goal == (3.0, 2.0):
-            #     goal = (-2.0, 0.5)
-            # else:
-            #     goal = (3.0, 2.0)
-
-            # clear trail so each run is visible clean
-            trail_points = []
-
-            # tiny pause just so you can see the jump/reset in rviz
-            rospy.sleep(0.5)
+            trail_points = []  # clear path so next mission is clean
+            rospy.sleep(0.5)   # brief pause so jump is visible in RViz
 
         # -------------------------------------------------
-        # 1. Compute attraction towards goal ("go this way")
+        # 1. Attraction toward goal ("go this way")
         # -------------------------------------------------
-        to_goal_x = goal[0] - x
-        to_goal_y = goal[1] - y
+        to_goal_x = gx - x
+        to_goal_y = gy - y
         goal_dist = math.sqrt(to_goal_x**2 + to_goal_y**2)
 
         if goal_dist > 0.0001:
@@ -91,14 +99,13 @@ if __name__ == "__main__":
             to_goal_y /= goal_dist
 
         # -------------------------------------------------
-        # 2. Compute repulsion from obstacles ("not that way")
+        # 2. Repulsion from obstacles ("not through that blob")
         # -------------------------------------------------
         repel_x = 0.0
         repel_y = 0.0
         for (ox, oy, r) in obstacles:
             d = dist((x, y), (ox, oy))
             if d < avoid_range and d > 0.0001:
-                # push away from obstacle center, stronger when closer
                 push = (avoid_range - d) / avoid_range  # 0..1
                 dir_x = x - ox
                 dir_y = y - oy
@@ -110,24 +117,22 @@ if __name__ == "__main__":
                     repel_y += dir_y * push
 
         # -------------------------------------------------
-        # 3. Combine goal attraction + obstacle repulsion
+        # 3. Combine attraction + repulsion
         # -------------------------------------------------
         move_x = to_goal_x + avoid_strength * repel_x
         move_y = to_goal_y + avoid_strength * repel_y
 
-        # normalize movement direction
         mv_mag = math.sqrt(move_x**2 + move_y**2)
         if mv_mag > 0.0001:
             move_x /= mv_mag
             move_y /= mv_mag
 
         # -------------------------------------------------
-        # 4. Step forward
+        # 4. Advance robot
         # -------------------------------------------------
         x += move_x * base_speed
         y += move_y * base_speed
 
-        # heading faces movement direction
         theta = math.atan2(move_y, move_x)
 
         # -------------------------------------------------
@@ -154,7 +159,7 @@ if __name__ == "__main__":
         br.sendTransform(tf_msg)
 
         # -------------------------------------------------
-        # 7. Publish robot marker (yellow arrow robot)
+        # 7. Robot marker (yellow arrow)
         # -------------------------------------------------
         robot_marker = visualization_msgs.msg.Marker()
         robot_marker.header.frame_id = "base_link"
@@ -178,7 +183,7 @@ if __name__ == "__main__":
         robot_marker_pub.publish(robot_marker)
 
         # -------------------------------------------------
-        # 8. Publish goal marker (green delivery point)
+        # 8. Goal marker (green cube where gx, gy is)
         # -------------------------------------------------
         goal_marker = visualization_msgs.msg.Marker()
         goal_marker.header.frame_id = "map"
@@ -194,14 +199,14 @@ if __name__ == "__main__":
         goal_marker.color.g = 1.0
         goal_marker.color.b = 0.0
         goal_marker.color.a = 1.0
-        goal_marker.pose.position.x = goal[0]
-        goal_marker.pose.position.y = goal[1]
+        goal_marker.pose.position.x = gx
+        goal_marker.pose.position.y = gy
         goal_marker.pose.position.z = 0.0
         goal_marker.pose.orientation.w = 1.0
         goal_marker_pub.publish(goal_marker)
 
         # -------------------------------------------------
-        # 9. Publish obstacle markers (red blobs)
+        # 9. Obstacles (red blobs)
         # -------------------------------------------------
         obs_marker = visualization_msgs.msg.Marker()
         obs_marker.header.frame_id = "map"
@@ -210,9 +215,9 @@ if __name__ == "__main__":
         obs_marker.id = 2
         obs_marker.type = visualization_msgs.msg.Marker.SPHERE_LIST
         obs_marker.action = visualization_msgs.msg.Marker.ADD
-        obs_marker.scale.x = 0.8   # diameter in x
-        obs_marker.scale.y = 0.8   # diameter in y
-        obs_marker.scale.z = 0.2   # small height
+        obs_marker.scale.x = 0.8
+        obs_marker.scale.y = 0.8
+        obs_marker.scale.z = 0.2
         obs_marker.color.r = 1.0
         obs_marker.color.g = 0.0
         obs_marker.color.b = 0.0
@@ -227,7 +232,7 @@ if __name__ == "__main__":
         obs_marker_pub.publish(obs_marker)
 
         # -------------------------------------------------
-        # 10. Publish trail marker (blue line of where we've driven)
+        # 10. Trail (blue path)
         # -------------------------------------------------
         trail = visualization_msgs.msg.Marker()
         trail.header.frame_id = "map"
@@ -236,7 +241,7 @@ if __name__ == "__main__":
         trail.id = 3
         trail.type = visualization_msgs.msg.Marker.LINE_STRIP
         trail.action = visualization_msgs.msg.Marker.ADD
-        trail.scale.x = 0.05  # line thickness
+        trail.scale.x = 0.05
         trail.color.r = 0.0
         trail.color.g = 0.5
         trail.color.b = 1.0
