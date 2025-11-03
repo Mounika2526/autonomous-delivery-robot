@@ -1,0 +1,16 @@
+<launch>
+
+    <!-- Run the nav simulator node (robot motion + avoidance + markers + TF) -->
+    <node pkg="autonomous-delivery-robot"
+          type="nav_sim.py"
+          name="nav_sim"
+          output="screen" />
+
+    <!-- Open RViz preconfigured for 2D nav visualization -->
+    <node pkg="rviz"
+          type="rviz"
+          name="rviz"
+          args="-d $(find autonomous-delivery-robot)/launch/rviz_nav.rviz"
+          output="screen" />
+
+</launch>

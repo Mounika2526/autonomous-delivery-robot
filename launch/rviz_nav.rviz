@@ -1,0 +1,126 @@
+Panels:
+  - Class: rviz/Displays
+    Help Height: 0
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /RobotMarker1
+        - /GoalMarker1
+        - /Obstacles1
+        - /Obstacles1/Status1
+        - /Trail1
+        - /Trail1/Status1
+      Splitter Ratio: 0.5
+    Tree Height: 203
+  - Class: rviz/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Preferences:
+  PromptSaveOnExit: true
+Toolbars:
+  toolButtonStyle: 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        base_link:
+          Value: true
+        map:
+          Value: true
+      Marker Alpha: 1
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          base_link:
+            {}
+      Update Interval: 0
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /robot_marker
+      Name: RobotMarker
+      Namespaces:
+        robot: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /goal_marker
+      Name: GoalMarker
+      Namespaces:
+        goal: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /obstacle_markers
+      Name: Obstacles
+      Namespaces:
+        obstacles: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /trail_marker
+      Name: Trail
+      Namespaces:
+        trail: true
+      Queue Size: 100
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Default Light: true
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/Interact
+      Hide Inactive Objects: true
+    - Class: rviz/Select
+    - Class: rviz/Measure
+    - Class: rviz/MoveCamera
+    - Class: rviz/FocusCamera
+  Value: true
+  Views:
+    Current:
+      Angle: 0.26000019907951355
+      Class: rviz/TopDownOrtho
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Scale: 46.27078628540039
+      Target Frame: map
+      X: 1.3053666353225708
+      Y: 0.8615840077400208
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 536
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd00000001000000000000016c000001bcfc0200000002fb000000100044006900730070006c006100790073010000003e00000109000000ca00fffffffb0000000a00560069006500770073010000014d000000ad000000a600ffffff000001ae000001bc00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Views:
+    collapsed: false
+  Width: 800
+  X: 0
+  Y: 27

@@ -163,6 +163,8 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/fake_publishers.py
   scripts/pose_broadcaster.py
+  scripts/fake_laser.py
+  scripts/nav_sim.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
