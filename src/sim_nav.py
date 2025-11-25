@@ -13,15 +13,15 @@ class SimNav:
         self.setpoint = msg.data
 
     def spin(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(2)
         while not rospy.is_shutdown():
             twist = Twist()
 
             if self.setpoint == 0:      # Location A
-                twist.linear.x = 0.3
+                twist.linear.x = 1.0
                 twist.angular.z = 0.0
             elif self.setpoint == 1:    # Location B
-                twist.linear.x = -0.3
+                twist.linear.x = -1.0
                 twist.angular.z = 0.0
             else:
                 twist.linear.x = 0.0

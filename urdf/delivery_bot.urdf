@@ -177,21 +177,22 @@
   <!-- GAZEBO DIFF DRIVE PLUGIN -->
   <gazebo>
     <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
-      <ros>
-        <namespace>/delivery_bot</namespace>
-        <remapping>cmd_vel:=cmd_vel</remapping>
-        <remapping>odom:=odom</remapping>
-      </ros>
 
-      <updateRate>50</updateRate>
-
+      <!-- Joints that act as wheels -->
       <leftJoint>left_wheel_joint</leftJoint>
       <rightJoint>right_wheel_joint</rightJoint>
 
-      <!-- Tune these if robot moves funny -->
+      <!-- Geometry -->
       <wheelSeparation>0.36</wheelSeparation>
       <wheelDiameter>0.14</wheelDiameter>
 
+      <!-- ROS topics -->
+      <commandTopic>cmd_vel</commandTopic>
+      <odometryTopic>odom</odometryTopic>
+      <robotBaseFrame>base_link</robotBaseFrame>
+
+      <!-- Dynamics / updates -->
+      <updateRate>50</updateRate>
       <commandTimeout>1.0</commandTimeout>
       <publishWheelTF>true</publishWheelTF>
       <publishOdom>true</publishOdom>

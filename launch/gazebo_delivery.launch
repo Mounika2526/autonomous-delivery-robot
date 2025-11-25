@@ -12,4 +12,12 @@
   <!-- Spawn robot -->
   <node pkg="gazebo_ros" type="spawn_model" name="spawn_delivery_bot" output="screen"
         args="-urdf -model delivery_bot -param robot_description" />
+
+  <!-- Simulation Navigation Node (moves the robot in Gazebo) -->
+  <node pkg="autonomous-delivery-robot"
+        type="sim_nav.py"
+        name="sim_nav"
+        output="screen">
+  </node>
+
 </launch>

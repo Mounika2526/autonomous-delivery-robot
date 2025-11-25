@@ -2,7 +2,7 @@
 
     <!-- Run the nav simulator node (robot motion + avoidance + markers + TF) -->
     <node pkg="autonomous-delivery-robot"
-          type="nav_sim.py"
+          type="sim_nav.py"
           name="nav_sim"
           output="screen" />
 
