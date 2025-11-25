@@ -1,0 +1,15 @@
+<launch>
+  <!-- Start Gazebo with your custom world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find autonomous-delivery-robot)/world/adr_campus.world"/>
+    <arg name="paused" value="false"/>
+  </include>
+
+  <!-- Load URDF directly (no xacro) -->
+  <param name="robot_description"
+         textfile="$(find autonomous-delivery-robot)/urdf/delivery_bot.urdf" />
+
+  <!-- Spawn robot -->
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_delivery_bot" output="screen"
+        args="-urdf -model delivery_bot -param robot_description" />
+</launch>

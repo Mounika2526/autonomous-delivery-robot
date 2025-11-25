@@ -4,7 +4,8 @@ import tf2_ros
 import geometry_msgs.msg
 import visualization_msgs.msg
 import math
-import threading  # NEW
+import threading  
+from geometry_msgs.msg import Pose2D
 
 # -------------------------------------------------
 # Helper: distance between two points
@@ -18,11 +19,24 @@ def dist(a, b):
 goal_lock = threading.Lock()
 goal_xy = [3.0, 2.0]  # default goal until /delivery_goal gives us one
 
+subgoal_lock = threading.Lock()
+subgoal_xy = [3.0, 2.0]
+have_subgoal = False
+
+
 def goal_callback(msg):
     """Update goal_xy whenever /delivery_goal publishes a new Point."""
     with goal_lock:
         goal_xy[0] = msg.x
         goal_xy[1] = msg.y
+
+def next_goal_callback(msg):
+    global have_subgoal
+    with subgoal_lock:
+        subgoal_xy[0] = msg.x
+        subgoal_xy[1] = msg.y
+        have_subgoal = True
+
 
 if __name__ == "__main__":
     rospy.init_node("nav_sim")
@@ -38,6 +52,11 @@ if __name__ == "__main__":
     goal_sub = rospy.Subscriber("delivery_goal",
                                 geometry_msgs.msg.Point,
                                 goal_callback)
+    
+    next_goal_sub = rospy.Subscriber("next_goal",
+                                 geometry_msgs.msg.Point,
+                                 next_goal_callback)
+
 
     rate = rospy.Rate(15)  # 15 Hz looks smooth
 
@@ -63,29 +82,28 @@ if __name__ == "__main__":
     base_speed     = 0.03   # forward step size per tick
     avoid_strength = 0.6    # how hard we steer away from obstacles
     avoid_range    = 0.8    # start avoiding when within this distance
+    
+    pose_pub = rospy.Publisher("/robot_pose", Pose2D, queue_size=10)
 
     while not rospy.is_shutdown():
         # -------------------------------------------------
         # 0. Read the current goal safely
         # -------------------------------------------------
-        with goal_lock:
-            gx = goal_xy[0]
-            gy = goal_xy[1]
+        with subgoal_lock:
+            if have_subgoal:
+                gx = subgoal_xy[0]
+                gy = subgoal_xy[1]
+            else:
+                with goal_lock:
+                    gx = goal_xy[0]
+                    gy = goal_xy[1]
+
 
         # Distance to goal
         to_goal_x_full = gx - x
         to_goal_y_full = gy - y
         goal_dist_full = math.sqrt(to_goal_x_full**2 + to_goal_y_full**2)
 
-        # -------------------------------------------------
-        # 0.5. Arrived at goal? -> reset robot to start
-        # -------------------------------------------------
-        if goal_dist_full < 0.15:
-            x = 0.0
-            y = 0.0
-            theta = 0.0
-            trail_points = []  # clear path so next mission is clean
-            rospy.sleep(0.5)   # brief pause so jump is visible in RViz
 
         # -------------------------------------------------
         # 1. Attraction toward goal ("go this way")
@@ -135,6 +153,12 @@ if __name__ == "__main__":
 
         theta = math.atan2(move_y, move_x)
 
+        # Publish robot pose
+        pose = Pose2D()
+        pose.x = x
+        pose.y = y
+        pose.theta = theta
+        pose_pub.publish(pose)
         # -------------------------------------------------
         # 5. Leave breadcrumb trail
         # -------------------------------------------------
@@ -159,10 +183,10 @@ if __name__ == "__main__":
         br.sendTransform(tf_msg)
 
         # -------------------------------------------------
-        # 7. Robot marker (yellow arrow)
+        # 7. Robot marker (yellow arrow) - in map frame at (x, y)
         # -------------------------------------------------
         robot_marker = visualization_msgs.msg.Marker()
-        robot_marker.header.frame_id = "base_link"
+        robot_marker.header.frame_id = "map"   # changed from "base_link"
         robot_marker.header.stamp = rospy.Time.now()
         robot_marker.ns = "robot"
         robot_marker.id = 0
@@ -175,12 +199,17 @@ if __name__ == "__main__":
         robot_marker.color.g = 1.0
         robot_marker.color.b = 0.0
         robot_marker.color.a = 1.0
+
+        # orientation from theta
         robot_marker.pose.orientation.z = math.sin(theta/2.0)
         robot_marker.pose.orientation.w = math.cos(theta/2.0)
-        robot_marker.pose.position.x = 0.0
-        robot_marker.pose.position.y = 0.0
+
+        # put robot at its simulated position in map frame
+        robot_marker.pose.position.x = x       # changed from 0.0
+        robot_marker.pose.position.y = y       # changed from 0.0
         robot_marker.pose.position.z = 0.0
         robot_marker_pub.publish(robot_marker)
+
 
         # -------------------------------------------------
         # 8. Goal marker (green cube where gx, gy is)

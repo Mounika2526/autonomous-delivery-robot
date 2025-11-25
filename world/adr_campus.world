@@ -1,0 +1,72 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="adr_world">
+    <!-- Basic ground + sun -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- Obstacle 1 -->
+    <model name="obstacle1">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.4 0.4 0.6</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.4 0.4 0.6</size>
+            </box>
+          </geometry>
+        </visual>
+      </link>
+      <pose>1.2 0.5 0.3 0 0 0</pose>
+    </model>
+
+    <!-- Obstacle 2 -->
+    <model name="obstacle2">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>0.4 0.4 0.6</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>0.4 0.4 0.6</size></box>
+          </geometry>
+        </visual>
+      </link>
+      <pose>2.0 1.5 0.3 0 0 0</pose>
+    </model>
+
+    <!-- Obstacle 3 -->
+    <model name="obstacle3">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>0.4 0.4 0.6</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>0.4 0.4 0.6</size></box>
+          </geometry>
+        </visual>
+      </link>
+      <pose>2.5 0.5 0.3 0 0 0</pose>
+    </model>
+
+  </world>
+</sdf>
+
