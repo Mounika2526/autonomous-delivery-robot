@@ -101,16 +101,27 @@ public:
 class SetPoint
 {
 public:
-    bool m_isReachedSetPoint{0};
+    bool m_isReachedSetPoint{0};  
     ros::Publisher m_setpointPub{};
     ros::Subscriber m_reachedSetpointSub{};
     int m_setpoint{-1};
+
+    // 🔹 NEW: table of all supported locations
+    std::vector<std::string> m_locations{
+        "Location A",
+        "Location B",
+        "Location C",
+        "Location D"
+        // You can add more: "Location E", ...
+    };
 
     SetPoint(ros::NodeHandle* n)
     {
         int queue_size = 1000;
         m_setpointPub = n->advertise<std_msgs::Int8>("setpoint", queue_size);
-        m_reachedSetpointSub = n->subscribe("isReachedSetPoint", queue_size, &SetPoint::reached_setpoint_callback, this);
+        m_reachedSetpointSub = n->subscribe(
+            "isReachedSetPoint", queue_size,
+            &SetPoint::reached_setpoint_callback, this);
     }
 
     void publish_setpoint(int sp)
@@ -118,30 +129,44 @@ public:
         std_msgs::Int8 value;
         value.data = sp;
         m_setpointPub.publish(value);
+
+        // Optional: keep internal copy of last setpoint
+        m_setpoint = sp;
     }
 
     void reached_setpoint_callback(const std_msgs::Bool::ConstPtr &value)
-    {
+    {   
         m_isReachedSetPoint = value->data;
     }
 
-    bool find_setpoint(std::string location)
+    // 🔹 CHANGED: generic mapping from location string → setpoint index
+    bool find_setpoint(const std::string &location)
     {
-        if (location.compare("Location A") == 0)
+        int setpoint_index = -1;
+
+        // Look up the location in our table
+        for (std::size_t i = 0; i < m_locations.size(); ++i)
         {
-            publish_setpoint(0);
-        }
-        else if (location.compare("Location B") == 0)
-        {
-            publish_setpoint(1);
-        }
-        else
-        {
-            publish_setpoint(-1);
-            return 0;
+            if (location == m_locations[i])
+            {
+                setpoint_index = static_cast<int>(i);
+                break;
+            }
         }
 
-        return 1;
+        if (setpoint_index == -1)
+        {
+            // Unknown location
+            publish_setpoint(-1);
+            ROS_WARN("SetPoint::find_setpoint() - Unknown location: '%s'",
+                     location.c_str());
+            return false;
+        }
+
+        publish_setpoint(setpoint_index);
+        ROS_INFO("SetPoint::find_setpoint() - Location '%s' mapped to setpoint %d",
+                 location.c_str(), setpoint_index);
+        return true;
     }
 };
 

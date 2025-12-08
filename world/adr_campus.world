@@ -67,6 +67,46 @@
       <pose>2.5 0.5 0.3 0 0 0</pose>
     </model>
 
+    <!-- Sender Marker (Location C) -->
+    <model name="location_C">
+      <static>true</static>
+      <!-- x y z roll pitch yaw -->
+      <pose>0.5 0.0 0.2 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.4 0.4 0.4</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>   <!-- red -->
+            <diffuse>1 0 0 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Receiver Marker (Location D) -->
+    <model name="location_D">
+      <static>true</static>
+      <!-- x y z roll pitch yaw -->
+      <pose>3.0 0.0 0.2 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.4 0.4 0.4</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0 0 1 1</ambient>   <!-- blue -->
+            <diffuse>0 0 1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
   </world>
 </sdf>
 

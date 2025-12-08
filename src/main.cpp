@@ -90,22 +90,47 @@ public:
 
     void navigate_to_point(SetPoint* setpoint)
     {
-        // NOTE: this is super simple logic from the original code:
-        // setpoint 0 = move forward
-        // setpoint 1 = move backward
-        if (setpoint->m_setpoint == 0)  // Location A
+        // Reset to stopped each cycle, then set based on setpoint
+        m_rightVelocity = 0;
+        m_leftVelocity  = 0;
+
+        // Location A: straight forward
+        if (setpoint->m_setpoint == 0)
         {
             m_rightVelocity = 15;
             m_leftVelocity  = 15;
+            ROS_INFO("Nav: Location A (setpoint 0) -> straight forward");
         }
-        else if (setpoint->m_setpoint == 1)     // Location B
+        // Location B: straight backward
+        else if (setpoint->m_setpoint == 1)
         {
             m_rightVelocity = -15;
             m_leftVelocity  = -15;
+            ROS_INFO("Nav: Location B (setpoint 1) -> straight backward");
+        }
+        // Location C: forward with slight right arc
+        else if (setpoint->m_setpoint == 2)
+        {
+            m_rightVelocity = 10;   // slower right
+            m_leftVelocity  = 15;   // faster left  -> arc to the right
+            ROS_INFO("Nav: Location C (setpoint 2) -> forward + slight RIGHT turn");
+        }
+        // Location D: forward with slight left arc
+        else if (setpoint->m_setpoint == 3)
+        {
+            m_rightVelocity = 15;   // faster right
+            m_leftVelocity  = 10;   // slower left  -> arc to the left
+            ROS_INFO("Nav: Location D (setpoint 3) -> forward + slight LEFT turn");
+        }
+        else
+        {
+            // Unknown / unset setpoint
+            ROS_WARN("Nav: unknown setpoint %d, stopping.", setpoint->m_setpoint);
         }
 
         set_velocity();
     }
+
 
     // This function was broken before because half of it was commented out.
     // Here we turn it into a safe stub that just logs.

@@ -44,6 +44,12 @@ target_link_libraries(obs_adr
   ${catkin_LIBRARIES}
 )
 
+add_executable(main_cmdvel src/main_cmdvel.cpp)
+target_link_libraries(main_cmdvel ${catkin_LIBRARIES})
+
+add_executable(obs_cmdvel src/obs_cmdvel.cpp)
+target_link_libraries(obs_cmdvel ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
