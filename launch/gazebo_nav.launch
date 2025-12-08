@@ -1,4 +1,7 @@
 <launch>
+  <!-- Use Gazebo simulated time everywhere -->
+  <param name="use_sim_time" value="true"/>
+
   <!-- 1. Gazebo with world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find autonomous-delivery-robot)/world/adr_campus.world"/>

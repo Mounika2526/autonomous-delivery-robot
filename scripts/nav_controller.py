@@ -98,7 +98,11 @@ class NavController:
 
             # Close enough → stop
             if dist < self.goal_tolerance:
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
                 self.cmd_pub.publish(twist)
+                rospy.loginfo("NavController: goal reached at (%.2f, %.2f)", self.x, self.y)
+                self.goal = None      
                 rate.sleep()
                 continue
 
@@ -107,6 +111,10 @@ class NavController:
             yaw_error = desired_yaw - self.yaw
             # Normalize to [-pi, pi]
             yaw_error = math.atan2(math.sin(yaw_error), math.cos(yaw_error))
+
+            # Small deadband so robot drives straight when nearly aligned
+            if abs(yaw_error) < 0.05:
+                yaw_error = 0.0
 
             # Base controller: face goal and move
             lin = self.max_lin * max(0.0, 1.0 - abs(yaw_error))
@@ -117,6 +125,12 @@ class NavController:
             if bias != 0.0:
                 lin *= 0.4     # slow down when avoiding
                 ang += bias * self.max_ang
+
+            # Clamp angular speed
+            if ang > self.max_ang:
+                ang = self.max_ang
+            elif ang < -self.max_ang:
+                ang = -self.max_ang
 
             twist.linear.x = lin
             twist.angular.z = ang
