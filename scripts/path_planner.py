@@ -115,9 +115,21 @@ class PathPlanner:
         sx, sy = world_to_cell(self.robot_x, self.robot_y)
         gx, gy = world_to_cell(self.goal_x, self.goal_y)
         path = astar(self.grid, (sx, sy), (gx, gy))
-        self.path_cells = path
+
+        if not path:
+            rospy.logwarn(
+                "Path planner: no path from (%.2f, %.2f) to (%.2f, %.2f). "
+                "Using direct goal as single waypoint.",
+                self.robot_x, self.robot_y, self.goal_x, self.goal_y,
+            )
+            gx_cell, gy_cell = world_to_cell(self.goal_x, self.goal_y)
+            self.path_cells = [(gx_cell, gy_cell)]
+        else:
+            self.path_cells = path
+            rospy.loginfo("A* path len: %d", len(path))
+
         self.path_index = 0
-        rospy.loginfo("A* path len: %d", len(path))
+
 
     def update(self, event):
         if not self.path_cells:

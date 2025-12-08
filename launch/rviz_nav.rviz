@@ -5,12 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotMarker1
-        - /GoalMarker1
-        - /Obstacles1
-        - /Obstacles1/Status1
-        - /Trail1
-        - /Trail1/Status1
+        - /Status1
       Splitter Ratio: 0.5
     Tree Height: 203
   - Class: rviz/Views
@@ -32,10 +27,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base_link:
-          Value: true
-        map:
-          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF
@@ -43,9 +34,7 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          base_link:
-            {}
+        {}
       Update Interval: 0
       Value: true
     - Class: rviz/Marker
@@ -53,7 +42,7 @@ Visualization Manager:
       Marker Topic: /robot_marker
       Name: RobotMarker
       Namespaces:
-        robot: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -61,7 +50,7 @@ Visualization Manager:
       Marker Topic: /goal_marker
       Name: GoalMarker
       Namespaces:
-        goal: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -69,7 +58,7 @@ Visualization Manager:
       Marker Topic: /obstacle_markers
       Name: Obstacles
       Namespaces:
-        obstacles: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -77,14 +66,14 @@ Visualization Manager:
       Marker Topic: /trail_marker
       Name: Trail
       Namespaces:
-        trail: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -97,7 +86,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0.26000019907951355
+      Angle: 2.834998607635498
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -107,7 +96,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 46.27078628540039
+      Scale: 137.6595916748047
       Target Frame: map
       X: 1.3053666353225708
       Y: 0.8615840077400208

@@ -57,5 +57,7 @@ catkin_install_python(PROGRAMS
   src/access_database.py
   src/gps.py
   src/sim_nav.py
+  scripts/odom_to_pose2d.py
+  scripts/nav_controller.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

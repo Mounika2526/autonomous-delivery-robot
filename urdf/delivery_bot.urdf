@@ -1,23 +1,31 @@
 <?xml version="1.0"?>
 <robot name="delivery_bot">
 
-  <!-- Base link: simple box chassis -->
+  <!-- ===================== BASE LINK ===================== -->
+  <!-- Root frame of the robot -->
   <link name="base_link">
+    <!-- Put the chassis ABOVE the wheel axle so only the wheels touch the ground -->
     <visual>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
       <geometry>
-        <!-- size: x y z in meters -->
+        <!-- x y z in meters -->
         <box size="0.5 0.4 0.2"/>
       </geometry>
       <material name="gray">
         <color rgba="0.6 0.6 0.6 1.0"/>
       </material>
     </visual>
+
     <collision>
+      <!-- Same box, also lifted up -->
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
       <geometry>
         <box size="0.5 0.4 0.2"/>
       </geometry>
     </collision>
+
     <inertial>
+      <!-- Reasonable mass & inertia for a small robot -->
       <mass value="10.0"/>
       <inertia ixx="1.0" ixy="0.0" ixz="0.0"
                iyy="1.0" iyz="0.0"
@@ -25,9 +33,10 @@
     </inertial>
   </link>
 
-  <!-- A fake lidar sitting on top -->
+  <!-- ===================== LIDAR ===================== -->
   <link name="lidar_link">
     <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.05" length="0.05"/>
       </geometry>
@@ -37,6 +46,7 @@
     </visual>
 
     <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.05" length="0.05"/>
       </geometry>
@@ -80,30 +90,31 @@
     </gazebo>
   </link>
 
+  <!-- Lidar is above the lifted chassis -->
   <joint name="lidar_joint" type="fixed">
-    <origin xyz="0 0 0.15" rpy="0 0 0"/>
+    <origin xyz="0 0 0.30" rpy="0 0 0"/>
     <parent link="base_link"/>
     <child link="lidar_link"/>
   </joint>
 
-  <!-- Left wheel -->
+  <!-- ===================== LEFT WHEEL ===================== -->
   <link name="left_wheel_link">
     <visual>
+      <!-- Wheel axis is lateral (y) -->
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <cylinder radius="0.07" length="0.03"/>
       </geometry>
-      <!-- Rotate so cylinder axis is lateral like a wheel -->
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <material name="black2">
         <color rgba="0.05 0.05 0.05 1.0"/>
       </material>
     </visual>
 
     <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <cylinder radius="0.07" length="0.03"/>
       </geometry>
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
     </collision>
 
     <inertial>
@@ -114,31 +125,32 @@
     </inertial>
   </link>
 
-  <!-- Joint now continuous so the wheel can rotate -->
+  <!-- Wheel axle at base_link origin (z=0). Radius=0.07 => bottom at z=-0.07 -->
   <joint name="left_wheel_joint" type="continuous">
-    <origin xyz="0 0.18 0.05" rpy="0 0 0"/>
+    <origin xyz="0 0.18 0.0" rpy="0 0 0"/>
     <parent link="base_link"/>
     <child link="left_wheel_link"/>
+    <!-- Lateral axis -->
     <axis xyz="0 1 0"/>
   </joint>
 
-  <!-- Right wheel -->
+  <!-- ===================== RIGHT WHEEL ===================== -->
   <link name="right_wheel_link">
     <visual>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <cylinder radius="0.07" length="0.03"/>
       </geometry>
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <material name="black3">
         <color rgba="0.05 0.05 0.05 1.0"/>
       </material>
     </visual>
 
     <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <cylinder radius="0.07" length="0.03"/>
       </geometry>
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
     </collision>
 
     <inertial>
@@ -149,15 +161,14 @@
     </inertial>
   </link>
 
-  <!-- Joint now continuous so the wheel can rotate -->
   <joint name="right_wheel_joint" type="continuous">
-    <origin xyz="0 -0.18 0.05" rpy="0 0 0"/>
+    <origin xyz="0 -0.18 0.0" rpy="0 0 0"/>
     <parent link="base_link"/>
     <child link="right_wheel_link"/>
     <axis xyz="0 1 0"/>
   </joint>
 
-  <!-- TRANSMISSIONS FOR GAZEBO DIFF DRIVE -->
+  <!-- ===================== TRANSMISSIONS ===================== -->
   <transmission name="left_wheel_trans">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="left_wheel_joint"/>
@@ -174,9 +185,9 @@
     </actuator>
   </transmission>
 
-  <!-- GAZEBO DIFF DRIVE PLUGIN -->
+  <!-- ===================== GAZEBO DIFF DRIVE PLUGIN ===================== -->
   <gazebo>
-    <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+    <plugin name="gazebo_ros_diff_drive" filename="libgazebo_ros_diff_drive.so">
 
       <!-- Joints that act as wheels -->
       <leftJoint>left_wheel_joint</leftJoint>
@@ -189,14 +200,19 @@
       <!-- ROS topics -->
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
+      <odometryFrame>odom</odometryFrame>
       <robotBaseFrame>base_link</robotBaseFrame>
 
-      <!-- Dynamics / updates -->
-      <updateRate>50</updateRate>
-      <commandTimeout>1.0</commandTimeout>
+      <!-- Behaviour / output -->
+      <updateRate>30.0</updateRate>
+      <publishTf>true</publishTf>
       <publishWheelTF>true</publishWheelTF>
-      <publishOdom>true</publishOdom>
       <publishWheelJointState>true</publishWheelJointState>
+
+      <!-- Dynamics -->
+      <wheelAcceleration>0.0</wheelAcceleration>
+      <wheelTorque>5.0</wheelTorque>
+      <commandTimeout>1.0</commandTimeout>
     </plugin>
   </gazebo>
 
