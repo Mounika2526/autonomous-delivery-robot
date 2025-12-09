@@ -1,251 +1,234 @@
-# Autonomous Delivery Robot – Simulation Adaptation (Academic Project)
+# Autonomous Delivery Robot – ROS + Gazebo Simulation
 
-This repository is a **fork and enhancement** of the original  
-[MIT-Mentors/autonomous-delivery-robot](https://github.com/MIT-Mentors/autonomous-delivery-robot) project.
-
-It was extended for my **academic coursework at the University of Maryland, Baltimore County (UMBC)** to simulate and visualize the autonomous delivery robot entirely in a **virtual Ubuntu 20.04 / ROS Noetic** environment without Raspberry Pi hardware.
+A fully simulated autonomous delivery robot developed as part of **SENG 691 – AI Agent Computing**.  
+This project integrates **sensing, planning, and action** inside a physics‑based environment, transitioning the robot from symbolic behavior (Phase‑1) to realistic autonomous navigation driven by LiDAR and differential‑drive control (Phase‑3).
 
 ---
 
-## 🎯 Project Purpose
-This fork enables **software-only testing and visualization** of the robot’s navigation and delivery system using ROS topics, URDF, and RViz.  
-It allows the robot’s local and global navigation logic to be executed and verified in simulation before deployment on physical hardware.
+## 🚀 Project Overview
+
+The Autonomous Delivery Robot (ADR) simulates a campus delivery agent capable of:
+- Perceiving obstacles using a **Gazebo LiDAR plugin**
+- Planning routes using a **grid‑based A\* planner**
+- Executing motion using a **differential‑drive controller**
+- Adjusting its movement through **sensor‑driven obstacle avoidance**
+- Navigating realistically in a **Gazebo physics environment**
+
+Phase‑3 completes the full **sense → plan → act → evaluate** loop.
 
 ---
 
-## 🧩 Key Additions and Modifications
-| Component | Description |
-|------------|-------------|
-| `launch/visualize_robot.launch` | Launch file for RViz-based visualization |
-| `launch/rviz_config.rviz` | Custom configuration for robot visualization |
-| `urdf/delivery_bot.urdf` | URDF model of the delivery robot |
-| `scripts/fake_publishers.py` | Simulates sensor and status topics for testing |
-| `scripts/pose_broadcaster.py` | Publishes simulated pose data to ROS topics |
-| `launch/delivery.launch` | Updated for simulation workflow |
-| General | Updated C++ and Python nodes to run without hardware (GPIO-free build) |
+## 🧭 Phase Progress Summary
+
+### **Phase‑1 (Symbolic Prototype)**
+- URDF model creation and RViz visualization  
+- Placeholder LaserScan + hardcoded obstacles  
+- Symbolic navigation (no Gazebo physics)  
+- No real sensing, no real motion  
+
+### **Phase‑2 (Simulation Foundation)**
+- Robot successfully spawns in Gazebo  
+- Hardware dependencies removed  
+- A\* planner implemented and validated  
+- Architecture restructured into perception–planning–control layers  
+- Still **no real motion** and **no real LiDAR perception**
+
+### **Phase‑3 (Full Autonomous Navigation ✓)**
+- Differential‑drive controller added → robot **moves physically**  
+- Gazebo LiDAR integrated → **real LaserScan** data  
+- Obstacle‑aware navigation using sector‑based analysis  
+- A\* waypoints now drive real movement  
+- Completed perception → planning → control loop  
 
 ---
 
-## 🧠 Learning Goals
-- Understand ROS Noetic package structure and node communication  
-- Simulate a multi-module robotic system using publishers, subscribers, and URDF  
-- Visualize robot pose, delivery progress, and sensor data in RViz  
-- Develop a testable version of an autonomous delivery system using open-source tools  
+## 🏗 System Architecture (Phase‑3)
 
-# AUTONOMOUS DELIVERY ROBOT
-## Summary of the project 
-This project is aimed at building an autonomous robot to be used for delivering things for a closed environment like an office, a college campus, etc consisting of multiple buildings. The robot is inspired by food and package delivery robots developed by FedEx, Amazon, Starship, etc. prominently used in the US. 
-
-The robot delivers documents from one location to another autonomously with the ease of a web application thus, reducing time and human effort. Some of the features include: web application, simultaneous deliveries, and charging stations. The robot is being built for the MIT campus, Anna University. Only the staffs belonging to this campus will have access to the robot through the web application and delivery orders can be placed after registering. The bot autonomously navigates from its current location to the sender’s location, collects the documents and goes to the receiver’s location. A security system is employed for safety reasons made of electromagnet and relay. Only users will be able to open the cabinets where the documents are stored. Autonomous navigation is implemented by a combination of local obstacle avoidance and global path planning.
-
-The local obstacle avoidance algorithm using the depth information obtained from the Intel Realsense R200 camera. Using the laserscan package we get a single streak of data (480 data points) present at a particular height. Depending on this data, we can find the distance at which different obstacles are present. As for global path planning, we get the sender and receiver location throgh the web application from the user. We get the current location of the bot from GPS module. With the help of the Mapbox API, we get an optimized path from one location to another. The bot moves with the help of this optimized path and it's current location.
-
-The bot can be extended for use in delivering items in an open environment. It can be trained for an external environment like food and package delivery applications and also indoor environments like medical applications for delivering medicines within the vicinity of a hospital.
-
-## System Requirements
-### Operating system
-Tested on Ubuntu Server 20.04 
-
-## Hardware requirements
-1. [Raspberry Pi 4 model B](https://datasheets.raspberrypi.com/rpi4/raspberry-pi-4-datasheet.pdf)
-2. [MDD10A - Dual Channel 10A DC Motor Driver](https://robu.in/wp-content/uploads/2015/01/MDD10A-Users-Manual-Google-Docs.pdf)
-3. [Intel RealSense R200 Camera](https://www.mouser.com/pdfdocs/intel_realsense_camera_r200.pdf)
-4. [NEO-M8N GPS module](https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf)
-5. [DC DC XL6009E1 Step-up boost converter module](https://www.haoyuelectronics.com/Attachment/XL6009/XL6009-DC-DC-Converter-Datasheet.pdf)
-6. [Johnson Geared Motor](https://robu.in/wp-content/uploads/2017/05/Johnson-Geared-Motor-Made-In-India-12-V-DC-300-RPM-ROBU.IN_-1.pdf)
-7. [5 V Relay](https://html.alldatasheet.com/html-pdf/157071/DBLECTRO/JQC-3FC/384/1/JQC-3FC.html)
-8. [MPU 9250](https://invensense.tdk.com/wp-content/uploads/2015/02/PS-MPU-9250A-01-v1.1.pdf)
-9. DC 24 V 300 mA 10 mm 6 N push-pull solenoid electromagnet
-10. PTron power bank
-11. Wheels
-12. Lithium ion batteries
-13. SD Card
-
-## Software requirements
-1. [Robot Operating System (ROS) - Noetic](http://wiki.ros.org/noetic/Installation)
-2. [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
-3. [Git](https://git-scm.com/downloads)
-4. [Wiring Pi](http://wiringpi.com/download-and-install)
-
-
-## Setting up the Raspberry Pi
-The Raspberry Pi was setup and accessed in headless mode.
-
-### Prepare SD card
-* This was done using in a Windows OS.
-* For SD cards with more than 32GB size, the file system is exFAT and not FAT32. But RPi does not recognize exFAT, hence change it to FAT32 to work. Used a [3rd party software](https://www.diskpart.com/download-home.html) to do this for our 64GB SD card.
-* Used [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash Ubuntu Server 20.04 LTS to the SD card.
-* Before flashing, do ctrl+shift+x to open image customization options. There we can set the hostname, enable SSH and configure wifi. Helps to avoid using monitors and do a headless setup.
-* After flashing, insert SD card into the slot in Raspberry Pi and connect the power supply (PTron power bank via USB c cable) to the Raspberry Pi.
-* Successful setup should ensure    
-    - Constant red LED - Indicates sufficient power.
-    - Blinking green LED - Indicates that the SD card is being accessed.
-
-### Access Raspberry Pi remotely
-Make sure the Raspberry Pi and the PC are connected to the same network.
-* Open the terminal
-* To install necessary tools for SSH
 ```
-sudo apt install nmap
-sudo apt-get install openssh-client
-sudo apt-get install openssh-server
-```
-* To get the local IP address
-```
-hostname -I
-```
-* Replace the last number of the local IP address with 0/24 to the subnet range (Eg: if the local IP address is 192.168.43.68 then...)
-```
-nmap -sn 192.168.43.0/24
-```
-From this, we will get the IP address of Raspberry Pi.
-* To establish an SSH connection using the IP address of Raspberry Pi, username and password we will be requires to access the Pi remotely
-```
-ssh <username>@<ip_address>
-```
-This would then prompt the user to enter the password, after which remote access will be established.
-
-### Setting up catkin workspace
-Refer [this ](http://wiki.ros.org/catkin/Tutorials/create_a_workspace) tutorial.
-
-### Setting up a local repository
-1. Create a ROS package in the catkin workspace
-    ```
-    cd ~/<catkin_workspace_name>/src
-    ```
-    ```
-    catkin_create_pkg autonomous-delivery-robot std_msgs rospy roscpp
-    ```
-    ```
-    cd ~/<catkin_workspace_name>
-    ```
-    And then execute ```catkin build``` or ```catkin_make``` command.
-
-2. To get catkin working after ROS installation execute
-```
-sudo apt install python3-catkin-tools python3-osrf-pycommon
+User/Task → Delivery Agent → A* Planner → Navigation Controller
+                   ↓              ↑
+ Gazebo LiDAR → Perception Layer → Obstacle Safety Node → cmd_vel → Diff‑Drive Plugin → Gazebo World
 ```
 
-3. Initialise git <br />
-Make sure you have configured git using the commands.
-    ```
-    git config --global user.email "you@example.com"
-    git config --global user.name "your name"
-    ```
-    Initialise git in the local repository by executing the following commands.
-    ```
-    cd ~/<catkin_workspace_name>/src/autonomous-delivery-robot
-    ```
-    ```
-    git init
-    ```
-    ```
-    git add .
-    ```
-    ```
-    git commit -m "Created ROS package" .
-    ```
-    Rename master branch to main
-    ```
-    git branch -m main
-    ```
+### Architecture Diagram  
+*(Add diagram from your PDF page 10 here)*
 
-4.  Connect local repository to remote
-    ```
-    git remote add origin https://github.com/MIT-Mentors/autonomous-delivery-robot
-    ```
-    ```
-    git pull origin main --allow-unrelated-histories
+### Workflow Diagram  
+*(Add sequence diagram from PDF page 11 here)*
 
-### Setting up the camera
-Refer [this.](https://github.com/MIT-Mentors/Intel-RealSense-Camera-R200-setup)
+---
 
-### Setting up Firebase database
-Run the following commands
-```
-sudo apt install python3-pip
-sudo pip3 install requests
-pip install git+https://github.com/ozgur/python-firebase
-```
+## 🔍 Key Phase‑3 Enhancements
 
-### Setting up wiring pi
-Refer [this](http://wiringpi.com/download-and-install) for installation.
-After installation, we need to add a few lines to ~/.bashrc file.
-Open a terminal and execute
-```
-echo "
-sudo usermod -a -G gpio user_name
-% change the owner and group respectively
-sudo chown root.gpio /dev/gpiomem
-sudo chmod g+rw /dev/gpiomem" >> ~/.bashrc
-``` 
-Then execute
-```
-source ~/.bashrc
-```
+### ✅ 1. Differential‑Drive Motion Integration
+- Robot now moves using real `cmd_vel` commands  
+- Wheel rotation, friction, collisions handled by Gazebo  
+- Publishes `/odom` for waypoint tracking  
+- Enables continuous forward/turn behavior  
 
-## Running the software
-### For Obstacle avoidance
-In a terminal run
+### ✅ 2. Real LiDAR Perception
+- Gazebo ray‑based LiDAR publishes real `/scan`  
+- Environment obstacles reflect accurately  
+- Sector‑based (left/front/right) analysis enables reactive behavior  
+
+### ✅ 3. Navigation Pipeline Completion
+- A\* global planner still generates waypoints  
+- Navigation controller performs:
+  - Heading correction  
+  - Velocity generation  
+  - Obstacle‑based redirection  
+- Robot reaches goals meaningfully, not symbolically  
+
+### ✅ 4. Updated Control Architecture
+- Odometry → Pose2D conversion for planner  
+- Safety node overrides unsafe velocities  
+- Modular and maintainable code structure  
+
+---
+
+## 📂 Repository Structure
+
 ```
-roscore
-```
-In another terminal run
-```
-rosrun autonomous-delivery-robot obs_main
-```
-### For delivery from dummy location A to dummy location B
-```
-roslaunch autonomous-delivery-robot delivery.launch
+autonomous-delivery-robot/
+├── src/
+│   ├── main.cpp              # Navigation + differential-drive motion
+│   ├── delivery.cpp          # Task handling, setpoints, agent logic
+│   ├── obs_main.cpp          # LiDAR-based obstacle avoidance
+│   ├── gps.py                # Simulated GPS / pose feed
+│   ├── access_database.py    # (Optional) external DB integration
+│
+├── launch/
+│   ├── gazebo_nav.launch     # Full Phase-3 launch
+│   ├── gazebo_delivery.launch
+│   ├── delivery.launch
+│
+├── worlds/                   # Custom Gazebo world
+├── urdf/                     # Robot model w/ diff-drive + LiDAR
+├── CMakeLists.txt
+├── package.xml
+└── README.md
 ```
 
-## Running the app
-Refer [this](https://github.com/MIT-Mentors/autonomous-delivery-robot-application)
+---
 
-## Software module overview
-| Module | Purpose |
-|--------|---------|
-| src/access_database.py |  To access the database to read/write data |
-| src/database_url.txt | Contains the url of the database |
-| src/delivery.cpp | Resolves the sender and receiver data and publishes the setpoint |
-| src/main.cpp | Navigates the robot to the setpoint |
-| src/obs_main.cpp | Does obstacle avoidance whilst basic locomotion |
+## 🧪 Running the Project
 
-## Software workflow
-Firebase is used as a database where all the user data, availability of the robot, and data pertaining to a specific order are stored. The users are the only ones who will be able to access the robot. All the users should be registered with the application and should belong to the closed community for safety purposes. For example, if the robot is trained for a college campus, then only the staff can access the robot. All these staffs should be registered with the application. The data used as the username can be an email id specific to the college alone. The data is stored as key-value pairs in a NoSQL format. 
+### **1. Build**
+```bash
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+```
 
-The data in Firebase can be stored as either a Real-time database or a Firestore database. We want a real-time updation as time plays a critical role in determining the order when multiple orders are placed, therefore, we have our data stored in the Real-time database. The database and web application are connected after configuration is done in the application. The data in the database can be read and written through the application. If a new user registers with the application, their data gets added to the database. If an existing user tries to log in, their corresponding username and password are checked and after verification, they’ll be logged in. Once logged in, the user can place orders if the robot is available. 
+### **2. Run Full Phase‑3 System**
+```bash
+roslaunch autonomous-delivery-robot gazebo_nav.launch
+```
 
+This loads:
+- Gazebo world  
+- URDF robot  
+- LiDAR plugin  
+- Differential‑drive controller  
+- A\* planner  
+- Navigation controller  
+- RViz visualization  
 
-![Delivery Flowchart](https://github.com/MIT-Mentors/autonomous-delivery-robot/assets/81500653/693e7128-1edf-4480-8d6c-7b2dbea51727)
+### What You Should See
+- Robot spawns in Gazebo  
+- `/scan` shows real LiDAR rays  
+- A\* path appears in RViz  
+- Robot moves toward goal  
+- Robot slows/turns when obstacles appear  
+- Robot completes navigation task  
 
+---
 
-The information regarding the availability of the robot is also stored in the database. As soon as the order is placed the availability field is changed from ‘Yes’ to ‘No’. So, placing the order when the availability is ‘No’ is not possible. The following information is given by the receiver when placing an order: Sender’s location, Receiver’s location, and Receiver’s name in the application. The receiver’s name must be one of the registered users. Once the order has been placed, all the data specific to the order will be updated in the database under the ‘Current delivery’ field. The data stored in the database is accessed by the ROS nodes running in the Raspberry Pi through Rest APIs provided by the Firebase to access the information.
+## 📡 Important ROS Topics
 
-![Obstacle Avoidance Flowchart](https://github.com/MIT-Mentors/autonomous-delivery-robot/assets/81500653/96fef7dc-9a26-4cef-b74c-4fa2db051784)
+| Topic | Description |
+|-------|-------------|
+| `/scan` | Real LaserScan from Gazebo LiDAR |
+| `/odom` | Odometry from differential-drive |
+| `/cmd_vel` | Final velocity commands |
+| `/cmd_vel_nav` | Raw navigation controller output |
+| `/cmd_vel_safe` | Obstacle-filtered safe commands |
+| `/next_goal` | A\* waypoint publisher |
 
+---
 
-Based on the current location of the bot, sender's location, and receiver's location, an optimized path is found using the Mapbox API. The bot navigates with the help of the current location and the waypoints we get from the APPI. Once, the location is reached, the user can access the document holder through the app. Once the delivery is done, the availability is changed from ‘No’ to ‘Yes’, and the data under ‘Current delivery’ is copied to ‘Previous deliveries’ field and data is cleared from the former. So, the Raspberry Pi and application is integrated through the database.
+## 📈 Evidence of Improvements (Phase‑2 → Phase‑3)
 
-## Known issues
-1. Local obstacle avoidance algorithm: The accuracy and precision of the camera data under various conditions plays a major role. Refer [this.](https://messy-scallop-252.notion.site/CAMERA-ACCURACY-AND-PRECISION-0b4867ea712e4581ab8c16f60915d73a) The range of the depth information from Inter Realsense R200 is 0.5 m to 6 m. This pose as a problem to the accuracy of the local obstacle avoidance algorithm.
-2. Authentication and deployment: The application has not used the in-built feature of Firebase of authentication. Hence, dynamic updation of the data for each user individually cannot be done. The application can then be hosted with Firebase itself. 
+### Motion
+- **Phase‑2:** Robot spawned but could not move  
+- **Phase‑3:** Robot moves realistically using diff‑drive plugin  
 
-## Future scope
-Simultaneous deliveries can be implemented. This helps in reducing the resources and waiting time in average. The deliveries can be done taking into consideration the locations and the time when the order was placed. Multiple charging stations can be installed to charge the batteries wirelessly thus, reducing the human interference. An algorithm can be built such that once the battery level goes below a particular value the bot autonomously navigates to the nearest charging station to charge itself. Optimization of local obstacle avoidance algorithm can be done with the help of the accuracy and precision measurements at various lighting conditions and the RGB data from the camera. 
+### Perception
+- **Phase‑2:** Fake/symbolic LaserScan  
+- **Phase‑3:** Real LiDAR perception from environment  
 
-## Project members
-[Aarthi Meena](https://github.com/Aarthi160802)
+### Navigation
+- **Phase‑2:** Planner disconnected from motion  
+- **Phase‑3:** Robot physically follows A\* path  
 
-[Sowbhagya Lakshmi](https://github.com/Sowbhagya-lakshmi)
+### Obstacle Handling
+- **Phase‑2:** None  
+- **Phase‑3:** Sector‑based detection & avoidance  
 
-[Yogeshwari](https://github.com/yogeshwari-vs)
+### Integration
+- **Phase‑2:** Modules symbolic, disconnected  
+- **Phase‑3:** Full integrated sense → plan → act loop  
 
-**Mentored by :** [Pragash Durai](https://github.com/Dcruise546)
+---
 
+## ⚠️ Known Limitations
 
-***
+Even with Phase‑3 improvements, some constraints remain:
 
-## LICENSE
+- No SLAM / AMCL → odometry drift possible  
+- A\* global planner does not dynamically replan  
+- Obstacle avoidance is reactive, not predictive  
+- No multi‑robot coordination  
+- System is simulation‑only (no real hardware yet)  
 
+These limitations do not affect Phase‑3 correctness.
+
+---
+
+## 🔮 Future Scope
+
+- Add SLAM/AMCL for stable localization  
+- Introduce dynamic global re‑planning (costmaps)  
+- Expand to multi‑robot coordination  
+- Integrate machine‑learning-based motion control  
+- Deploy on real hardware with LiDAR  
+
+---
+
+## 🎥 Phase‑3 Demonstration Summary
+
+Your demo video should showcase:
+
+1. Gazebo world + robot spawning  
+2. RViz showing LiDAR rays, A\* path, TF frames  
+3. Robot moving using diff‑drive  
+4. Obstacle appearing and being avoided  
+5. Robot reaching destination successfully  
+
+This validates the complete perception → planning → control system.
+
+---
+
+## 📎 Resources
+
+- GitHub Repo: https://github.com/Mounika2526/autonomous-delivery-robot  
+- Demo Video Folder: (Add your Drive link)
+
+---
+
+## 📄 License
 MIT License
+
+---
+
+This README reflects your **actual Phase‑3 academic achievements** and is suitable for GitHub, portfolios, and resume showcasing.
