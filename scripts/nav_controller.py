@@ -33,7 +33,7 @@ class NavController:
         self.max_lin = rospy.get_param("~max_linear_speed", 0.4)
         self.max_ang = rospy.get_param("~max_angular_speed", 1.0)
         self.goal_tolerance = rospy.get_param("~goal_tolerance", 0.15)
-        self.obstacle_dist = rospy.get_param("~obstacle_distance", 0.6)
+        self.obstacle_dist = rospy.get_param("~obstacle_distance", 0.8)
 
     def odom_cb(self, msg):
         self.x = msg.pose.pose.position.x
@@ -80,42 +80,46 @@ class NavController:
             rospy.loginfo("NavController: no active goal for setpoint %d", sp)
 
     def compute_obstacle_bias(self):
-        """
-        Look at the LaserScan and compute a simple steering bias:
-        > 0 => steer left, < 0 => steer right, 0 => no extra steering.
-        """
         if self.scan is None:
             return 0.0
 
         ranges = list(self.scan.ranges)
         n = len(ranges)
-        if n == 0:
+        if n < 3:
             return 0.0
 
         third = n // 3
-        right = [r for r in ranges[:third] if r > 0.0]
-        front = [r for r in ranges[third:2*third] if r > 0.0]
-        left  = [r for r in ranges[2*third:] if r > 0.0]
 
-        def min_or_inf(arr):
-            return min(arr) if arr else float("inf")
+        right = [r for r in ranges[:third] if 0.05 < r < self.obstacle_dist]
+        front = [r for r in ranges[third:2*third] if 0.05 < r < self.obstacle_dist]
+        left  = [r for r in ranges[2*third:] if 0.05 < r < self.obstacle_dist]
 
-        left_min  = min_or_inf(left)
-        front_min = min_or_inf(front)
-        right_min = min_or_inf(right)
-
-        # If front is clear enough, no strong avoidance
-        if front_min > self.obstacle_dist:
+        # NEW: if nothing is close → no avoidance needed
+        if not right and not front and not left:
             return 0.0
 
-        # Front blocked: choose side with more free space
-        if left_min > right_min:
-            return +1.0   # steer left
-        elif right_min > left_min:
-            return -1.0   # steer right
-        else:
-            # both tight: default small left turn
+        # If obstacle directly in front
+        if front:
+            avg_left = min(left) if left else 99
+            avg_right = min(right) if right else 99
+
+            if avg_left > avg_right:
+                rospy.loginfo("Avoiding obstacle → turn LEFT")
+                return +1.5       # strong left
+            else:
+                rospy.loginfo("Avoiding obstacle → turn RIGHT")
+                return -1.5       # strong right
+
+        # If obstacle only on left → turn right
+        if left and not front:
+            return -1.0
+
+        # If obstacle only on right → turn left
+        if right and not front:
             return +1.0
+
+        return 0.0
+    
 
     def spin(self):
         rate = rospy.Rate(10)
@@ -143,6 +147,8 @@ class NavController:
                 rate.sleep()
                 continue
 
+            close_to_goal = dist < 0.4
+
             # Desired heading
             desired_yaw = math.atan2(dy, dx)
             yaw_error = desired_yaw - self.yaw
@@ -158,10 +164,15 @@ class NavController:
             ang = self.max_ang * yaw_error
 
             # Obstacle avoidance correction
-            bias = self.compute_obstacle_bias()
+            if close_to_goal:
+                bias = 0.0
+            else:
+                bias = self.compute_obstacle_bias()
+
             if bias != 0.0:
-                lin *= 0.4     # slow down when avoiding
-                ang += bias * self.max_ang
+                lin *= 0.2          # slow down more when avoiding
+                ang = bias * 1.5    # strong turn
+
 
             # Clamp angular speed
             if ang > self.max_ang:

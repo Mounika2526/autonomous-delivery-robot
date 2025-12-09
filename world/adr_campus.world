@@ -1,107 +1,95 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
   <world name="adr_world">
-    <!-- Basic ground + sun -->
+
     <include>
       <uri>model://ground_plane</uri>
     </include>
+
     <include>
       <uri>model://sun</uri>
     </include>
 
-    <!-- Obstacle 1 (moved up, away from center line C->D) -->
-    <model name="obstacle1">
+    <include>
+      <uri>model://tree</uri>
+      <name>tree_1</name>
+      <pose>1.5 0.2 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://tree</uri>
+      <name>tree_2</name>
+      <pose>2.2 -0.6 0 0 0 0</pose>
+    </include>
+
+    <model name="small_obstacle_1">
       <static>true</static>
       <link name="link">
         <collision name="collision">
           <geometry>
-            <box>
-              <size>0.4 0.4 0.6</size>
-            </box>
+            <box><size>0.25 0.25 0.4</size></box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
-            <box>
-              <size>0.4 0.4 0.6</size>
-            </box>
-          </geometry>
-        </visual>
-      </link>
-      <!-- x y z roll pitch yaw -->
-      <pose>1.2 1.0 0.3 0 0 0</pose>
-    </model>
-
-    <!-- Obstacle 2 (moved down) -->
-    <model name="obstacle2">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box><size>0.4 0.4 0.6</size></box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box><size>0.4 0.4 0.6</size></box>
-          </geometry>
-        </visual>
-      </link>
-      <pose>2.0 -1.0 0.3 0 0 0</pose>
-    </model>
-
-    <!-- Obstacle 3 (off to the side) -->
-    <model name="obstacle3">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box><size>0.4 0.4 0.6</size></box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box><size>0.4 0.4 0.6</size></box>
-          </geometry>
-        </visual>
-      </link>
-      <pose>2.5 1.2 0.3 0 0 0</pose>
-    </model>
-
-    <!-- Sender Marker (Location C) -->
-    <model name="location_C">
-      <static>true</static>
-      <!-- x y z roll pitch yaw -->
-      <pose>0.5 -0.8 0.2 0 0 0</pose>
-      <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>0.4 0.4 0.4</size>
-            </box>
+            <box><size>0.25 0.25 0.4</size></box>
           </geometry>
           <material>
-            <ambient>1 0 0 1</ambient>   <!-- red -->
+            <ambient>0.2 0.8 0.2 1</ambient>
+            <diffuse>0.2 0.8 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>0.8 -0.3 0.2 0 0 0</pose>
+    </model>
+
+    <model name="small_obstacle_2">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box><size>0.25 0.25 0.4</size></box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box><size>0.25 0.25 0.4</size></box>
+          </geometry>
+          <material>
+            <ambient>0.8 0.6 0.2 1</ambient>
+            <diffuse>0.8 0.6 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+      <pose>2.6 0.4 0.2 0 0 0</pose>
+    </model>
+
+    <model name="location_C">
+      <static>true</static>
+      <pose>0.5 -0.8 0.1 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <cylinder><radius>0.25</radius><length>0.4</length></cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>
             <diffuse>1 0 0 1</diffuse>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- Receiver Marker (Location D) -->
     <model name="location_D">
       <static>true</static>
-      <!-- x y z roll pitch yaw -->
-      <pose>3.0 0.8 0.2 0 0 0</pose>
+      <pose>3.0 0.8 0.1 0 0 0</pose>
       <link name="link">
         <visual name="visual">
           <geometry>
-            <box>
-              <size>0.4 0.4 0.4</size>
-            </box>
+            <cylinder><radius>0.25</radius><length>0.4</length></cylinder>
           </geometry>
           <material>
-            <ambient>0 0 1 1</ambient>   <!-- blue -->
+            <ambient>0 0 1 1</ambient>
             <diffuse>0 0 1 1</diffuse>
           </material>
         </visual>
