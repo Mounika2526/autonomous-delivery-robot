@@ -11,10 +11,14 @@
 import rospy
 from firebase import firebase
 from std_msgs.msg import String
+import os
 
-# Read the url of database from txt file 
-with open(r"/home/pi/catkin_ws/src/delivery_robot_phase_1/src/database_url.txt","r") as urlFile:
-    url = urlFile.read()
+# Read the url of database from txt file (same folder as this script)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+URL_FILE = os.path.join(SCRIPT_DIR, "database_url.txt")
+
+with open(URL_FILE, "r") as urlFile:
+    url = urlFile.read().strip()
 
 appHandle = firebase.FirebaseApplication(dsn=url, authentication=None)
 

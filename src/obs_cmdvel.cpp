@@ -2,14 +2,13 @@
 // Title        : obs_cmdvel.cpp (SIM / GAZEBO VERSION)
 // Description  : Local obstacle avoidance. Subscribes to /scan and /cmd_vel_nav and publishes a
 //                "safe" velocity on /cmd_vel for Gazebo diff drive.
-//                Logic (simple & robust):
-//                  - If front is CLEAR  -> forward = exactly /cmd_vel_nav
-//                  - If front is BLOCKED -> ignore /cmd_vel_nav, rotate in place to avoid
+//                IMPORTANT: if nav command is zero, we DO NOT override it (robot must stop).
 // *************************************************************************************************
 
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
@@ -31,8 +30,8 @@ public:
     ObstacleAvoider(ros::NodeHandle* n)
     {
         int q = 10;
-        scanSub_    = n->subscribe("scan",       q, &ObstacleAvoider::laserScanCallback, this);
-        navCmdSub_  = n->subscribe("cmd_vel_nav",q, &ObstacleAvoider::navCmdCallback,   this);
+        scanSub_    = n->subscribe("scan", q, &ObstacleAvoider::laserScanCallback, this);
+        navCmdSub_  = n->subscribe("cmd_vel_nav", q, &ObstacleAvoider::navCmdCallback, this);
         safeCmdPub_ = n->advertise<geometry_msgs::Twist>("cmd_vel", q);
     }
 
@@ -52,32 +51,61 @@ public:
             }
             else
             {
-                // ======= DEFAULT: follow navigation command ==========
+                // Default: follow navigation command from sim_nav
                 cmd_out = lastNavCmd_;
 
-                // ======= OBSTACLE OVERRIDE ===========================
-                if (frontObs_)
-                {
-                    // Ignore the nav command completely, rotate in place.
-                    cmd_out.linear.x = 0.0;
+                // 🔹 NEW: detect if nav wants us to STOP
+                bool navWantsStop =
+                    std::fabs(lastNavCmd_.linear.x)  < 1e-3 &&
+                    std::fabs(lastNavCmd_.angular.z) < 1e-3;
 
-                    // If right is blocked (and left is clearer), turn LEFT,
-                    // otherwise turn RIGHT. This tends to move us into free space.
-                    if (rightObs_ && !leftObs_)
+                // ----------------- OBSTACLE OVERRIDE -----------------
+                // Only override if nav actually wants to move (NOT when stopping)
+                if (!navWantsStop && frontObs_)
+                {
+                    // If we are EXTREMELY close, back up + turn to escape sticking
+                    if (minFrontDist_ > 0.0 && minFrontDist_ < veryCloseDist_)
                     {
-                        cmd_out.angular.z =  turnSpeed_;
+                        cmd_out.linear.x  = -0.2; // back up
+
+                        // choose turn direction: if right blocked, turn left, else turn right
+                        cmd_out.angular.z = (rightObs_ && !leftObs_) ?  turnSpeed_
+                                                                     : -turnSpeed_;
+
                         ROS_WARN_THROTTLE(1.0,
-                            "Obs: FRONT & RIGHT blocked -> rotate LEFT");
+                            "Obs: TOO CLOSE (%.2f m) -> BACKING UP & TURNING",
+                            minFrontDist_);
                     }
                     else
                     {
-                        cmd_out.angular.z = -turnSpeed_;
-                        ROS_WARN_THROTTLE(1.0,
-                            "Obs: FRONT blocked -> rotate RIGHT");
+                        // Normal avoidance (still forward, but turn strongly)
+                        if (rightObs_ && !leftObs_)
+                        {
+                            // Front + right blocked -> turn LEFT
+                            cmd_out.linear.x  = slowForward_;
+                            cmd_out.angular.z =  turnSpeed_;
+                            ROS_INFO_THROTTLE(1.0,
+                                "Obs: front & right blocked -> turn LEFT");
+                        }
+                        else if (!rightObs_)
+                        {
+                            // Front blocked, right free -> turn RIGHT
+                            cmd_out.linear.x  = slowForward_;
+                            cmd_out.angular.z = -turnSpeed_;
+                            ROS_INFO_THROTTLE(1.0,
+                                "Obs: front blocked -> turn RIGHT");
+                        }
+                        else
+                        {
+                            // Both sides crowded -> U-turn-ish
+                            cmd_out.linear.x  = slowForward_;
+                            cmd_out.angular.z =  turnSpeed_;
+                            ROS_INFO_THROTTLE(1.0,
+                                "Obs: fully blocked -> U-TURN");
+                        }
                     }
                 }
-                // If only side obstacles exist (no front obstacle), we simply keep
-                // following /cmd_vel_nav. (Your global nav is already steering.)
+                // ------------------------------------------------------
             }
 
             safeCmdPub_.publish(cmd_out);
@@ -93,18 +121,21 @@ private:
     ros::Publisher  safeCmdPub_;
 
     // State from /scan
-    bool leftObs_{false};
-    bool frontObs_{false};
-    bool rightObs_{false};
+    bool   leftObs_{false};
+    bool   frontObs_{false};
+    bool   rightObs_{false};
+    double minFrontDist_{0.0};   // closest obstacle in front (meters)
 
     // State from /cmd_vel_nav
     geometry_msgs::Twist lastNavCmd_;
     bool hasNavCmd_{false};
 
     // Tunable parameters
-    double obsDistThresh_{0.7};   // meters: obstacle if closer than this
-    int    pixelThresh_{25};      // min # of points to count as obstacle
-    double turnSpeed_{0.7};       // rad/s turn speed when front blocked
+    double obsDistThresh_{0.7};   // meters: when we start counting an obstacle
+    int    pixelThresh_{20};      // min # of points to count as obstacle
+    double slowForward_{0.02};    // m/s when avoiding
+    double turnSpeed_{0.9};       // rad/s turn speed when avoiding
+    double veryCloseDist_{0.25};  // m: if closer than this, back up
 
     void navCmdCallback(const geometry_msgs::Twist::ConstPtr& msg)
     {
@@ -132,23 +163,46 @@ private:
         int front_count = 0;
         int right_count = 0;
 
+        // Track minimum front distance
+        minFrontDist_ = 0.0;
+        bool firstFront = true;
+
         for (float d : left)
-            if (d > 0.0 && d < obsDistThresh_) left_count++;
+        {
+            if (d != 0.0 && d < obsDistThresh_) left_count++;
+        }
 
         for (float d : front)
-            if (d > 0.0 && d < obsDistThresh_) front_count++;
+        {
+            if (d != 0.0 && d < obsDistThresh_) front_count++;
+
+            if (d != 0.0)
+            {
+                if (firstFront)
+                {
+                    minFrontDist_ = d;
+                    firstFront = false;
+                }
+                else if (d < minFrontDist_)
+                {
+                    minFrontDist_ = d;
+                }
+            }
+        }
 
         for (float d : right)
-            if (d > 0.0 && d < obsDistThresh_) right_count++;
+        {
+            if (d != 0.0 && d < obsDistThresh_) right_count++;
+        }
 
         leftObs_  = (left_count  > pixelThresh_);
         frontObs_ = (front_count > pixelThresh_);
         rightObs_ = (right_count > pixelThresh_);
 
         ROS_INFO_THROTTLE(1.0,
-            "Obs flags -> L:%d F:%d R:%d (counts %d,%d,%d)",
+            "Obs flags -> L:%d F:%d R:%d (counts %d,%d,%d) minFront=%.2f",
             (int)leftObs_, (int)frontObs_, (int)rightObs_,
-            left_count, front_count, right_count);
+            left_count, front_count, right_count, minFrontDist_);
     }
 };
 

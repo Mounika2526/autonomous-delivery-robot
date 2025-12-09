@@ -6,22 +6,30 @@ from geometry_msgs.msg import Twist
 class SimNav:
     def __init__(self):
         self.setpoint = -1
-        self.cmd_pub = rospy.Publisher("cmd_vel", Twist, queue_size=10)
+
+        # ✅ publish to cmd_vel_nav (navigation output)
+        self.cmd_pub = rospy.Publisher("cmd_vel_nav", Twist, queue_size=10)
+
+        # listen to the integer setpoint from delivery_adr
         rospy.Subscriber("setpoint", Int8, self.setpoint_cb)
 
-    def setpoint_cb(self, msg):
+    def setpoint_cb(self, msg: Int8):
         self.setpoint = msg.data
+        rospy.loginfo("SimNav: received setpoint %d", self.setpoint)
 
     def spin(self):
-        rate = rospy.Rate(2)
+        rate = rospy.Rate(10)   # 10 Hz
         while not rospy.is_shutdown():
             twist = Twist()
 
-            if self.setpoint == 0:      # Location A
-                twist.linear.x = 1.0
+            # Map setpoints to simple forward/backward motion.
+            # 0,2  -> forward   (e.g., A, C)
+            # 1,3  -> backward  (e.g., B, D)
+            if self.setpoint in (0, 2):
+                twist.linear.x = 0.2
                 twist.angular.z = 0.0
-            elif self.setpoint == 1:    # Location B
-                twist.linear.x = -1.0
+            elif self.setpoint in (1, 3):
+                twist.linear.x = -0.2
                 twist.angular.z = 0.0
             else:
                 twist.linear.x = 0.0

@@ -5,6 +5,7 @@ from geometry_msgs.msg import Twist, Point
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
+from std_msgs.msg import Int8   # <<< NEW
 
 class NavController:
     def __init__(self):
@@ -17,11 +18,16 @@ class NavController:
         self.goal = None          # geometry_msgs/Point
         self.scan = None          # sensor_msgs/LaserScan
 
+        # Track which setpoint we are following
+        self.current_setpoint = -1
+
         # Publishers / subscribers
         self.cmd_pub = rospy.Publisher("cmd_vel", Twist, queue_size=10)
         rospy.Subscriber("odom", Odometry, self.odom_cb)
-        rospy.Subscriber("/next_goal", Point, self.goal_cb)
+        # We no longer depend on /next_goal for sim, but you can keep this if you want
+        # rospy.Subscriber("/next_goal", Point, self.goal_cb)
         rospy.Subscriber("/scan", LaserScan, self.scan_cb)
+        rospy.Subscriber("setpoint", Int8, self.setpoint_cb)   # <<< NEW
 
         # Parameters
         self.max_lin = rospy.get_param("~max_linear_speed", 0.4)
@@ -37,10 +43,41 @@ class NavController:
         self.yaw = yaw
 
     def goal_cb(self, msg):
+        # Not used in sim anymore, but kept for compatibility
         self.goal = msg
 
     def scan_cb(self, msg):
         self.scan = msg
+
+        # ---------- map /setpoint -> a goal in Gazebo ----------
+    def setpoint_cb(self, msg: Int8):
+        sp = msg.data
+        if sp == self.current_setpoint:
+            return
+
+        self.current_setpoint = sp
+        rospy.loginfo("NavController: new setpoint %d", sp)
+
+        # Map setpoints to fixed positions in the odom frame.
+        # Coordinates must match delivery.cpp -> get_location_xy()
+        if sp == 0:         # Location A (placeholder for now)
+            self.goal = Point(0.0, 0.0, 0.0)
+
+        elif sp == 1:       # Location B (placeholder for now)
+            self.goal = Point(0.0, 0.0, 0.0)
+
+        elif sp == 2:       # Location C
+            # MATCH: get_location_xy("Location C") -> (0.5, -0.8)
+            self.goal = Point(0.5, -0.8, 0.0)
+
+        elif sp == 3:       # Location D
+            # MATCH: get_location_xy("Location D") -> (3.0, 0.8)
+            self.goal = Point(3.0, 0.8, 0.0)
+
+        else:
+            # -1 or anything else: no active goal -> stop
+            self.goal = None
+            rospy.loginfo("NavController: no active goal for setpoint %d", sp)
 
     def compute_obstacle_bias(self):
         """
@@ -102,7 +139,7 @@ class NavController:
                 twist.angular.z = 0.0
                 self.cmd_pub.publish(twist)
                 rospy.loginfo("NavController: goal reached at (%.2f, %.2f)", self.x, self.y)
-                self.goal = None      
+                self.goal = None
                 rate.sleep()
                 continue
 
