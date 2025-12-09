@@ -22,6 +22,8 @@
 #include "std_msgs/String.h"
 #include "geometry_msgs/Vector3.h"
 #include "geometry_msgs/Point.h"   // NEW: publish nav goal positions
+#include <nav_msgs/Odometry.h>
+#include <cmath>
 
 // #include <wiringPi.h>   // REMOVED FOR VM
 // #include <softPwm.h>    // REMOVED FOR VM
@@ -48,6 +50,52 @@ enum class AvailabilityStatusOptions
 {
     yes,
     no,
+};
+
+// Returns true if we have coordinates for this logical location
+bool get_location_xy(const std::string& location, double& x, double& y)
+{
+    if (location == "Location C")
+    {
+        x = 0.5;  // from <pose>0.5 0.0 0.2 ...</pose> for location_C in world
+        y = -0.8;
+        return true;
+    }
+    else if (location == "Location D")
+    {
+        x = 3.0;  // from <pose>3.0 0.0 0.2 ...</pose> for location_D in world
+        y = 0.8;
+        return true;
+    }
+    // Optional: add A/B here if you want them too.
+    // else if (location == "Location A") { ... }
+
+    return false;
+}
+
+
+// Tracks robot pose from /odom (x,y)
+class RobotPose
+{
+public:
+    ros::Subscriber m_odomSub{};
+    double m_x{0.0};
+    double m_y{0.0};
+    bool   m_hasPose{false};
+
+    RobotPose(ros::NodeHandle* n)
+    {
+        int queue_size = 50;
+        m_odomSub = n->subscribe("odom", queue_size,
+                                 &RobotPose::odom_callback, this);
+    }
+
+    void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
+    {
+        m_x = msg->pose.pose.position.x;
+        m_y = msg->pose.pose.position.y;
+        m_hasPose = true;
+    }
 };
 
 // --------------------------------------------------------------------------------------
@@ -251,16 +299,30 @@ public:
 
         if (location == "Location A")
         {
-            // Pickup point (example coords)
+            // Example pickup point in nav_sim map
             p.x = 0.5;
             p.y = 0.5;
             p.z = 0.0;
         }
         else if (location == "Location B")
         {
-            // Dropoff point (example coords)
+            // Example dropoff point in nav_sim map
             p.x = 3.0;
             p.y = 2.0;
+            p.z = 0.0;
+        }
+        else if (location == "Location C")
+        {
+            // Match red cube in Gazebo (location_C pose)
+            p.x = 0.5;
+            p.y = 0.0;
+            p.z = 0.0;
+        }
+        else if (location == "Location D")
+        {
+            // Match blue cube in Gazebo (location_D pose)
+            p.x = 3.0;
+            p.y = 0.0;
             p.z = 0.0;
         }
         else
@@ -285,107 +347,161 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     BotAvailability botAvailability{&n};
-    ProgressStatus progressStatus{&n};
-    SetPoint setpoint{&n};
-    Sender sender{&n};
-    Receiver receiver{&n};
-    GoalPublisher goalPublisher{&n};   // NEW
+    ProgressStatus  progressStatus{&n};
+    SetPoint        setpoint{&n};
+    Sender          sender{&n};
+    Receiver        receiver{&n};
+    RobotPose       robotPose{&n};
+    GoalPublisher   goalPublisher{&n};
 
     ros::Rate loopRate(10);
 
-    time_t loopStartTime;
-    time_t loopCurrTime;
-    time_t timeDiff{0};
-
     std::cout << '\n';
+
+    // Store last completed order, so we don't immediately repeat it
+    std::string last_sender;
+    std::string last_receiver;
 
     while (ros::ok())
     {
-        time_t timeDiff{0};
-        int senderCount{0};
+        // ============= 0. WAIT FOR A NEW ORDER =============
+        ROS_INFO("Delivery: waiting for a new sender/receiver order...");
 
-        // ---------------- SENDER LOOP ----------------
-        // Simulate navigating to sender's pickup location.
+        // Wait until both sender and receiver are non-empty AND different from last completed
         while (ros::ok())
         {
-            bool isfoundSetpoint{setpoint.find_setpoint(sender.m_location)};
+            ros::spinOnce();
+
+            bool has_sender   = !sender.m_location.empty();
+            bool has_receiver = !receiver.m_location.empty();
+            bool is_new_order =
+                (sender.m_location != last_sender) ||
+                (receiver.m_location != last_receiver);
+
+            if (has_sender && has_receiver && is_new_order)
+            {
+                ROS_INFO("New order received: sender='%s', receiver='%s'",
+                         sender.m_location.c_str(), receiver.m_location.c_str());
+                break;
+            }
+
+            ROS_INFO_THROTTLE(5.0,
+                "Waiting... sender='%s', receiver='%s', last_sender='%s', last_receiver='%s'",
+                sender.m_location.c_str(), receiver.m_location.c_str(),
+                last_sender.c_str(), last_receiver.c_str());
+
+            loopRate.sleep();
+        }
+
+        if (!ros::ok())
+            break;
+
+        // Mark that bot is now busy
+        botAvailability.set_availability_status(AvailabilityStatusOptions::no);
+        progressStatus.set_progress_status(ProgressStatusOptions::in_progress);
+
+        // ============= 1. SENDER LOOP =============
+        while (ros::ok())
+        {
+            bool isfoundSetpoint = setpoint.find_setpoint(sender.m_location);
 
             if (isfoundSetpoint)
             {
-                if (senderCount == 0)
-                {
-                    time(&loopStartTime);
-                    senderCount++;
-                }
-
-                // Keep telling nav_sim where to go for pickup:
-                // e.g. "Location A" -> (0.5,0.5)
+                ROS_INFO("Found setpoint for sender: %s", sender.m_location.c_str());
                 goalPublisher.publish_goal_for_location(sender.m_location);
-
-                time(&loopCurrTime);
-                timeDiff = loopCurrTime - loopStartTime;
-
-                ROS_INFO("Found setpoint");
-                botAvailability.set_availability_status(AvailabilityStatusOptions::no);
-                progressStatus.set_progress_status(ProgressStatusOptions::in_progress);
             }
 
-            // Allow topics to update
-            sleep(2);
-            ros::spinOnce();
-            loopRate.sleep();
-
-            // After ~6 seconds, assume we've reached sender
-            if (timeDiff > 6)
+            // Only check distance if we have pose + target coords
+            double target_x, target_y;
+            if (robotPose.m_hasPose &&
+                get_location_xy(sender.m_location, target_x, target_y))
             {
-                ROS_INFO("Reached sender at %s", sender.m_location.c_str());
-                break;
+                double dx = robotPose.m_x - target_x;
+                double dy = robotPose.m_y - target_y;
+                double dist = std::sqrt(dx * dx + dy * dy);
+
+                double reach_thresh = 0.5; // tune as needed
+
+                if (dist < reach_thresh)
+                {
+                    ROS_INFO("Reached sender at %s (distance %.2f m)",
+                             sender.m_location.c_str(), dist);
+                    break;
+                }
             }
-        }
-
-        // ---------------- RECEIVER LOOP ----------------
-        // Now simulate navigating to receiver/dropoff.
-        time(&loopStartTime);
-
-        while (ros::ok())
-        {
-            int receiverCount{0}; // currently unused but kept for parity
-
-            bool isfoundSetpoint{setpoint.find_setpoint(receiver.m_location)};
-            (void)isfoundSetpoint;
-
-            // Keep telling nav_sim where to go for dropoff:
-            // e.g. "Location B" -> (3.0,2.0)
-            goalPublisher.publish_goal_for_location(receiver.m_location);
 
             sleep(1);
             ros::spinOnce();
             loopRate.sleep();
-
-            time(&loopCurrTime);
-            timeDiff = loopCurrTime - loopStartTime;
-
-            // After ~6 seconds, assume we've reached receiver
-            if (timeDiff > 6)
-            {
-                progressStatus.set_progress_status(ProgressStatusOptions::done);
-                botAvailability.set_availability_status(AvailabilityStatusOptions::yes);
-
-                ROS_INFO("Reached receiver at %s", receiver.m_location.c_str());
-                ROS_INFO("Completed delivery!");
-
-                ros::spinOnce();
-                loopRate.sleep();
-                sleep(1);
-                break;
-            }
         }
 
-        std::cout << '\n';
+        if (!ros::ok())
+            break;
 
-        // Small pause before restarting another delivery cycle
-        sleep(4);
+        // ============= 2. RECEIVER LOOP =============
+        while (ros::ok())
+        {
+            bool isfoundSetpoint = setpoint.find_setpoint(receiver.m_location);
+
+            if (isfoundSetpoint)
+            {
+                ROS_INFO("Found setpoint for receiver: %s", receiver.m_location.c_str());
+                goalPublisher.publish_goal_for_location(receiver.m_location);
+            }
+
+            double target_x, target_y;
+            if (robotPose.m_hasPose &&
+                get_location_xy(receiver.m_location, target_x, target_y))
+            {
+                double dx = robotPose.m_x - target_x;
+                double dy = robotPose.m_y - target_y;
+                double dist = std::sqrt(dx * dx + dy * dy);
+
+                double reach_thresh = 0.8;
+
+                if (dist < reach_thresh)
+                {
+                    progressStatus.set_progress_status(ProgressStatusOptions::done);
+                    botAvailability.set_availability_status(AvailabilityStatusOptions::yes);
+
+                    // Tell navigation to stop
+                    setpoint.publish_setpoint(-1);
+
+                    ROS_INFO("Reached receiver at %s (distance %.2f m)",
+                             receiver.m_location.c_str(), dist);
+                    ROS_INFO("Completed delivery!");
+                    break;
+                }
+            }
+
+            sleep(1);
+            ros::spinOnce();
+            loopRate.sleep();
+        }
+
+        if (!ros::ok())
+            break;
+
+        // ============= 3. RECORD COMPLETED ORDER & RESET =============
+        last_sender   = sender.m_location;
+        last_receiver = receiver.m_location;
+
+        // Optional: clear locations so we don't reuse by accident
+        // (If your database/app will publish a fresh order each time,
+        // you can comment these out if you like.)
+        sender.m_location.clear();
+        receiver.m_location.clear();
+
+        ROS_INFO("Delivery: cycle finished for sender='%s', receiver='%s'. "
+                 "Waiting for next order...",
+                 last_sender.c_str(), last_receiver.c_str());
+
+        // Short pause before listening for next order
+        sleep(2);
         ros::spinOnce();
         loopRate.sleep();
     }
+
+    ROS_INFO("Delivery node shutting down.");
+    return 0;
 }
